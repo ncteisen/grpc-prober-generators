@@ -20,41 +20,16 @@ generator working, we will use the cpp helloworld example that can be found
 under examples/cpp/helloworld. Starting from the top of the gRPC repo:
 
 ```
-# build the plugin
-cd src/generator
+# build the plugins
 make
 
-# generate the other code needed by this helloworld example
-cd ../../examples/cpp/helloworld
+# generate the client
+cd helloworld
 make
 
-# generate the cpp client
-protoc -I ../../protos                                                     \
-    --grpc_out=.                                                           \
-    --plugin=protoc-gen-grpc=../../../src/generator/grpc_cpp_client_plugin \
-    ../../protos/helloworld.proto
-
-# build the cpp client
-g++ -I/usr/local/include              \
-    -pthread -std=c++11               \
-    -c -o helloworld.grpc.client.pb.o \
-    helloworld.grpc.client.pb.cc
-
-# link the cpp client
-g++ helloworld.pb.o                  \
-    helloworld.grpc.pb.o             \
-    helloworld.grpc.client.pb.o      \
-    -L/usr/local/lib                 \
-    `pkg-config --libs grpc++ grpc`  \
-    -lgrpc++_reflection -lprotobuf   \
-    -lpthread -ldl -lgflags          \
-    -o generated_helloworld_client
-
-# run the handwritten server in the background
-./greeter_server &
-
-# run the generated client
-./generated_helloworld_client --server_host localhost --server_port 50051
+# run the generated client. Note that you may want to start up an the
+# greeter server binary found in grpc/example/cpp/helloworld
+./generated_client --server_host localhost --server_port 50051
 ```
 
 Examine the contents of `helloworld.grpc.client.pb.cc`; it should be easy to see

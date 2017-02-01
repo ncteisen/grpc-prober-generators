@@ -29,18 +29,42 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
+HOST_SYSTEM = $(shell uname | cut -f 1 -d_)
+SYSTEM ?= $(HOST_SYSTEM)
 CXX = g++
 CPPFLAGS += -I/usr/local/include -pthread
 CXXFLAGS += -std=c++11
-LDFLAGS += -L/usr/local/lib -lprotobuf -lprotoc
+ifeq ($(SYSTEM),Darwin)
+LDFLAGS += -L/usr/local/lib `pkg-config --libs grpc++ grpc`       \
+           -lgrpc++_reflection \
+           -lprotobuf -lpthread -ldl -lgflags
+else
+LDFLAGS += -L/usr/local/lib `pkg-config --libs grpc++ grpc`       \
+           -Wl,--no-as-needed -lgrpc++_reflection -Wl,--as-needed \
+           -lprotobuf -lpthread -ldl -lgflags
+endif
 
-all: grpc_cpp_client_generator
+PROTOC = protoc
+GRPC_CPP_PLUGIN = grpc_cpp_plugin
+GRPC_CPP_PLUGIN_PATH ?= `which $(GRPC_CPP_PLUGIN)`
 
-grpc_cpp_client_generator: cpp_client_plugin.o cpp_client_generator.o
+all: generated_client
+
+generated_client: empty.pb.o messages.pb.o test.pb.o test.grpc.pb.o test.grpc.client.pb.o
 	$(CXX) $^ $(LDFLAGS) -o $@
 
-grpc_go_client_generator: go_client_plugin.o go_client_generator.o
-	$(CXX) $^ $(LDFLAGS) -o $@
+.PRECIOUS: %.grpc.client.pb.cc
+%.grpc.client.pb.cc: %.proto
+	$(PROTOC) -I . --grpc_out=. --plugin=protoc-gen-grpc=../grpc_cpp_client_generator $<
+
+.PRECIOUS: %.grpc.pb.cc
+%.grpc.pb.cc: %.proto
+	$(PROTOC) -I . --grpc_out=. --plugin=protoc-gen-grpc=$(GRPC_CPP_PLUGIN_PATH) $<
+
+.PRECIOUS: %.pb.cc
+%.pb.cc: %.proto
+	$(PROTOC) -I . --cpp_out=. $<
 
 clean:
-	rm -f *.o grpc_cpp_client_generator
+	rm -f *.o *.pb.cc *.pb.h generated_client
+
