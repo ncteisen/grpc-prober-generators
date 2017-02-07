@@ -34,7 +34,7 @@ CPPFLAGS += -I/usr/local/include -pthread
 CXXFLAGS += -std=c++11
 LDFLAGS += -L/usr/local/lib -lprotobuf -lprotoc
 
-all: grpc_cpp_client_generator
+all: grpc_cpp_client_generator grpc_go_client_generator
 
 grpc_cpp_client_generator: cpp_client_plugin.o cpp_client_generator.o
 	$(CXX) $^ $(LDFLAGS) -o $@
@@ -43,4 +43,4 @@ grpc_go_client_generator: go_client_plugin.o go_client_generator.o
 	$(CXX) $^ $(LDFLAGS) -o $@
 
 clean:
-	rm -f *.o grpc_cpp_client_generator
+	rm -f *.o grpc_cpp_client_generator grpc_go_client_generator

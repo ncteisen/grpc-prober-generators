@@ -33,7 +33,7 @@
 
 #include <map>
 
-#include "cpp_client_generator.h"
+#include "go_client_generator.h"
 
 #include <sstream>
 #include <algorithm>
@@ -55,28 +55,6 @@ void PopulateMessage(Printer* printer, const Message* message,
 template <class T, size_t N>
 T *array_end(T (&array)[N]) {
   return array + N;
-}
-
-// Prints includes like <this> or like "this"
-void PrintIncludes(Printer *printer, const std::vector<grpc::string> &headers,
-                   const Parameters &params) {
-  std::map<grpc::string, grpc::string> vars;
-
-  vars["l"] = params.use_system_headers ? '<' : '"';
-  vars["r"] = params.use_system_headers ? '>' : '"';
-
-  auto &s = params.grpc_search_path;
-  if (!s.empty()) {
-    vars["l"] += s;
-    if (s[s.size() - 1] != '/') {
-      vars["l"] += '/';
-    }
-  }
-
-  for (auto i = headers.begin(); i != headers.end(); i++) {
-    vars["h"] = *i;
-    printer->Print(vars, "#include $l$$h$$r$\n");
-  }
 }
 
 void AddMessage(Printer* printer, const Message* message, std::map<grpc::string,
@@ -217,16 +195,13 @@ void PopulateField(Printer* printer, const Field* field,
 void PopulateMessage(Printer* printer, const Message* message, 
   std::map<grpc::string, grpc::string> *vars, bool dot_dereference) {
 
-  // scope it to avoid variable name redeclaration
-  printer->Print("{\n");
-  printer->Indent();
+  (*vars)["message_name"] = message->name();
 
-  for (int i = 0; i < message->field_count(); ++i) {
-    PopulateField(printer, message->field(i).get(), vars, dot_dereference);
-  }
+  printer->Print(*vars, "$parent_input_message_name$ := &pb.$message_name${}\n");
 
-  printer->Outdent();
-  printer->Print("}\n");
+  // for (int i = 0; i < message->field_count(); ++i) {
+  //   PopulateField(printer, message->field(i).get(), vars, dot_dereference);
+  // }
 }
 
 
@@ -257,7 +232,9 @@ void PrintMessageField(Printer* printer, const Message* message,
 void PrintField(Printer* printer, const Field* field, 
   std::map<grpc::string, grpc::string> *vars) {
 
-  (*vars)["field_name"] = field->name();
+  std::string field_name = field->name();
+  field_name[0] = toupper(field_name[0]);
+  (*vars)["field_name"] = field_name;
   (*vars)["base_field_name"] = field->name();
   
   if (field->type() == Field::MESSAGE) {
@@ -290,17 +267,13 @@ void PrintField(Printer* printer, const Field* field,
           "\"$tabs$$parent_output_message_name$.$field_name$()[1] = \" "
           "<< $parent_output_message_name$.$field_name$()[1] << \"\\n\";\n");
     } else {
-      printer->Print(*vars, "std::cout << "
-          "\"$tabs$$parent_output_message_name$.$field_name$() = \" "
-          "<< $parent_output_message_name$.$field_name$() << \"\\n\";\n");
+      printer->Print(*vars, "fmt.Printf(\"$tabs$$parent_output_message_name$.$field_name$ = %v\\n\", $parent_output_message_name$.$field_name$)\n");
     }
   }
 }
 
 void PrintMessage(Printer* printer, const Message* message, 
   std::map<grpc::string, grpc::string> *vars) {
-  printer->Print(*vars, 
-      "std::cout << \"$tabs$Printing message: $field_name$\" << std::endl;\n");
   (*vars)["tabs"] = (*vars)["tabs"] + "\\t";
   for (int i = 0; i < message->field_count(); ++i) {
     PrintField(printer, message->field(i).get(), vars);
@@ -351,35 +324,24 @@ void PrintClientMethod(
       output_name.begin(), output_name.end(), output_name.begin(), tolower);
   (*vars)["parent_output_message_name"] = output_name + "_response";
 
-  printer->Print(*vars, "void $Method$() {\n\n");
+  printer->Print(*vars, "func $Service$$Method$($Service_lowercase$_client pb.$Service$Client) {\n\n");
   printer->Indent();
-
-  printer->Print("// This is the request message type that the RPC expects.\n"
-                "// We declare it here, and will populate it below\n");
-  printer->Print(*vars, "$Request$ $parent_input_message_name$;\n\n");
-  printer->Print("// This is the response message type that we will receive.\n"
-                "// We declare it here, and will populate it below\n"); 
-  printer->Print(*vars, "$Response$ $parent_output_message_name$;\n\n");
-  printer->Print("// This context will be used by the RPC to track metadata\n");
-  printer->Print("ClientContext context;\n\n");
 
   if (method->NoStreaming()) {
 
     PopulateMessageWithComments(printer, method->input_message().get(), vars);
 
     printer->Print("// This is where the actual RPC is performed\n");
-    printer->Print(*vars, "Status status = stub_->$Method$(&context, "
-          "$parent_input_message_name$, &$parent_output_message_name$);\n\n");
-    printer->Print("if (status.ok()) {\n\n");
+    printer->Print(*vars, "$parent_output_message_name$, err := $Service_lowercase$_client.$Method$(context.Background(), $parent_input_message_name$)\n\n");
+    printer->Print("if err != nil {\n");
     printer->Indent();
+    printer->Print("log.Fatalf(\"Error occurred: %v\", err)\n");
+    printer->Outdent();
+    printer->Print("}\n\n");
+
     
     // recursively print the response
     PrintMessageWithComments(printer, method->output_message().get(), vars);
-
-    printer->Outdent();
-    printer->Print("} else {\n");
-    PrintErrorStatus(printer, vars);
-    printer->Print("}\n");
 
   } else if (method->ClientOnlyStreaming()) {
 
@@ -505,30 +467,10 @@ void PrintClientServiceImpl(Printer *printer, const Service *service,
       service_name.begin(), service_name.end(), service_name.begin(), tolower);
   (*vars)["Service_lowercase"] = service_name;
 
-  printer->Print(*vars,
-                 "class $Service$ClientImpl final {\n"
-                 " public:\n");
-  printer->Indent();
-
-  printer->Print(*vars, 
-      "$Service$ClientImpl(std::shared_ptr<Channel> channel)\n");
-  
-  printer->Indent();
-  printer->Print(*vars, ": stub_($Service$::NewStub(channel)) {}");
-  printer->Outdent();
-
   for (int i = 0; i < service->method_count(); ++i) {
     printer->Print("\n\n");
     PrintClientMethod(printer, service->method(i).get(), vars);
   }
-
-  printer->Print("\n\n");
-  printer->Outdent();
-  printer->Print(" private:\n");
-  printer->Indent();
-  printer->Print(*vars, "std::unique_ptr<$Service$::Stub> stub_;\n");
-  printer->Outdent();
-  printer->Print("};\n\n");
 }
 
 void PrintClientService(Printer *printer, const Service *service,
@@ -541,15 +483,13 @@ void PrintClientService(Printer *printer, const Service *service,
   (*vars)["Service_lowercase"] = service_name;
 
   printer->Print(*vars, 
-      "$Service$ClientImpl $Service_lowercase$(CreateChannel());\n\n");
+      "$Service_lowercase$_client := pb.New$Service$Client(conn)\n\n");
 
   for (int i = 0; i < service->method_count(); ++i) {
     (*vars)["method_name"] = service->method(i)->name();
-    printer->Print(*vars, 
-        "std::cout << \"Calling $Service$.$method_name$:\" << std::endl;\n");
-    printer->Print(*vars, "$Service_lowercase$.$method_name$();\n");
-    printer->Print(*vars, 
-        "std::cout << \"Done with $Service$.$method_name$\\n\\n\";\n\n");
+    printer->Print(*vars, "fmt.Printf(\"Calling $Service$.$method_name$:\")\n");
+    printer->Print(*vars, "$Service$$method_name$($Service_lowercase$_client);\n");
+    printer->Print(*vars, "fmt.Printf(\"Done calling $Service$.$method_name$:\")\n");
   }
 
 }
@@ -569,24 +509,7 @@ void PrintChannelCreatorFunction(Printer* printer) {
 
 } // anon namespace
 
-grpc::string GetClientPrologue(File *file, const Parameters & /*params*/) {
-  grpc::string output;
-  {
-    // Scope the output stream so it closes and finalizes output to the string.
-    auto printer = file->CreatePrinter(&output);
-    std::map<grpc::string, grpc::string> vars;
-
-    vars["filename"] = file->filename();
-
-    printer->Print(vars, "// Generated by the gRPC client protobuf plugin.\n");
-    printer->Print(vars,
-                   "// If you make any local change, they will be lost.\n");
-    printer->Print(vars, "// source: $filename$\n");
-  }
-  return output;
-}
-
-grpc::string GetClientIncludes(File *file, const Parameters &params) {
+grpc::string GetClientHeaders(File *file, const Parameters &params) {
   grpc::string output;
   {
     // Scope the output stream so it closes and finalizes output to the string.
@@ -597,63 +520,45 @@ grpc::string GetClientIncludes(File *file, const Parameters &params) {
     vars["service_header_ext"] = file->service_header_ext();
     vars["Package"] = file->package_with_colons();
 
-    // headers
-    static const char *headers_strs[] = {
-        "iostream",
-        "memory",
-        "string",
-        "cstdint",
-        "thread",
-        "gflags/gflags.h",
-        "grpc++/grpc++.h",
-        "grpc/support/log.h",
-        "grpc/support/useful.h"};
-    std::vector<grpc::string> headers(headers_strs, array_end(headers_strs));
-    PrintIncludes(printer.get(), headers, params);
+    vars["filename"] = file->filename();
 
-    // includes the .grpc.pb.h file
+    printer->Print(vars, "// Generated by the gRPC client protobuf plugin.\n");
+    printer->Print(vars,
+                   "// If you make any local change, they will be lost.\n");
+    printer->Print(vars, "// source: $filename$\n");
+
+    // imports
+    printer->Print("package main\n\n");
+
+    printer->Print("import (\n");
+    printer->Indent();
     printer->Print(
-        vars, "\n#include \"$filename_base$$service_header_ext$\"\n\n");
+        "\"flag\"\n"
+        "\"log\"\n"
+        "\"fmt\"\n\n"
+        "\"golang.org/x/net/context\"\n"
+        "\"google.golang.org/grpc\"\n\n");
+    printer->Print(vars, "pb \"generated_pb_files/$filename_base$\"\n");
+    printer->Outdent();
+    printer->Print(")\n\n");
 
+    printer->Print("var (\n");
+    printer->Indent();
     printer->Print(
-      "// In some distros, gflags is in the namespace "
-      "google, and in some others,\n"
-      "// in gflags. This hack is enabling us to find both.\n"
-      "namespace google {}\n"
-      "namespace gflags {}\n"
-      "using namespace google;\n"
-      "using namespace gflags;\n\n");
+      "tls                = flag.Bool(\"use_tls\", false, \"Connection uses TLS if true, else plain TCP.\")\n"
+      "caFile             = flag.String(\"custom_ca_file\", \"testdata/ca.pem\", \"The file containning the CA root cert file.\")\n"
+      "serverAddr         = flag.String(\"server_host\", \"127.0.0.1\", \"Server host to connect to.\")\n"
+      "serverPort         = flag.String(\"server_port\", \"8080\", \"Server port.\")\n"
+      "serverHostOverride = flag.String(\"server_host_override\", \"foo.test.google.fr\", \"The server name use to verify the hostname returned by TLS handshake.\");\n");
+    printer->Outdent();
+    printer->Print(")\n\n");
 
-    // print the flag definitions
-    printer->Print("DEFINE_bool(use_tls, false, \"Connection uses TLS if true, else plain TCP.\");\n"
-        "DEFINE_string(custom_ca_file, \"\", "
-            "\"The file containning the CA root cert file.\");\n"
-        "DEFINE_int32(server_port, 8080, \"Server port.\");\n"
-        "DEFINE_string(server_host, \"localhost\", "
-            "\"Server host to connect to\");\n"
-        "DEFINE_string(server_host_override, \"foo.test.google.fr\",\n"
-        "\t\t\"The server name use to verify the hostname returned by TLS handshake\");\n\n");
-
-    // common using statements
-    printer->Print("using grpc::Channel;\n"
-        "using grpc::ClientContext;\n"
-        "using grpc::ClientReader;\n"
-        "using grpc::ClientReaderWriter;\n"
-        "using grpc::ClientWriter;\n"
-        "using grpc::Status;\n\n");
-
-    // add in the package service namespaces
-    for (int i = 0; i < file->service_count(); ++i) {
-      vars["service_class"] = file->service(i)->name();
-      printer->Print(vars, "using $Package$::$service_class$;\n");
-    }
-    printer->Print("\n");
   }
   return output;
 }
 
 // Prints the client implementations classes and main function
-grpc::string GetClientServices(File *file, const Parameters &params) {
+grpc::string GetClientBody(File *file, const Parameters &params) {
   grpc::string output;
   {
     // Scope the output stream so it closes and finalizes output to the string.
@@ -666,13 +571,18 @@ grpc::string GetClientServices(File *file, const Parameters &params) {
       printer->Print("\n");
     }
 
-    // print helper function for creating channel
-    PrintChannelCreatorFunction(printer.get());
-
-    printer->Print("int main(int argc, char** argv) {\n\n");
+    // print main
+    printer->Print("func main() {\n\n");
     printer->Indent();
 
-    printer->Print("ParseCommandLineFlags(&argc, &argv, true);\n\n");
+    printer->Print("flag.Parse()\n\n");
+
+    printer->Print("conn, err := grpc.Dial(\"localhost:50051\", grpc.WithInsecure())\n"
+        "if err != nil {\n"
+        "\tlog.Fatalf(\"did not connect: %v\", err)\n"
+        "}\n"
+        "defer conn.Close()\n\n");
+
 
     // calls all of the methods of every service
     for (int i = 0; i < file->service_count(); ++i) {
@@ -680,7 +590,6 @@ grpc::string GetClientServices(File *file, const Parameters &params) {
       printer->Print("\n");
     }
 
-    printer->Print("return 0;\n");
     printer->Outdent();
     printer->Print("}\n");
 
@@ -689,14 +598,5 @@ grpc::string GetClientServices(File *file, const Parameters &params) {
   return output;
 }
 
-grpc::string GetClientEpilogue(File *file, const Parameters & /*params*/) {
-  grpc::string output;
-  {
-    // Scope the output stream so it closes and finalizes output to the string.
-    auto printer = file->CreatePrinter(&output);
-    std::map<grpc::string, grpc::string> vars;
-  }
-  return output;
-}
 
 }  // namespace grpc_cpp_client_generator
