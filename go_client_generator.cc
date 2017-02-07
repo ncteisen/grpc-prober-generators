@@ -133,7 +133,9 @@ std::string GetRandomSentinelString() {
 void PopulateField(Printer* printer, const Field* field, 
   std::map<grpc::string, grpc::string> *vars, bool dot_dereference) {
 
-  (*vars)["field_name"] = field->name();
+  std::string field_name = field->name();
+  field_name[0] = toupper(field_name[0]);
+  (*vars)["field_name"] = field_name;
   (*vars)["base_field_name"] = field->name();
   (*vars)["deref"] = dot_dereference ? "." : "->";
   (*vars)["maybe_repeated"] = field->is_repeated() ? "repeated " : "";
@@ -146,19 +148,16 @@ void PopulateField(Printer* printer, const Field* field,
     case Field::INT64:
     case Field::UINT32:
     case Field::UINT64:
-      (*vars)["random_integer"] = GetRandomSentinelInteger();
-      printer->Print(*vars, "int $field_name$ = $random_integer$;\n");
+      (*vars)["random_data"] = GetRandomSentinelInteger();
       break;
 
     case Field::DOUBLE:
     case Field::FLOAT:
-      (*vars)["random_double"] = GetRandomSentinelDouble();
-      printer->Print(*vars, "double $field_name$ = $random_double$;\n");
+      (*vars)["random_data"] = GetRandomSentinelDouble();
       break;
 
     case Field::BOOL:
-      (*vars)["tf"] = rand() % 1 ? "true" : "false";
-      printer->Print(*vars, "bool $field_name$ = $tf$;\n");
+      (*vars)["random_data"] = rand() % 1 ? "true" : "false";
       break;
 
     case Field::ENUM:
@@ -166,8 +165,7 @@ void PopulateField(Printer* printer, const Field* field,
       break;
 
     case Field::STRING:
-      (*vars)["randome_string"] = GetRandomSentinelString();
-      printer->Print(*vars, "std::string $field_name$ = \"$randome_string$\";\n");
+      (*vars)["random_data"] = "\"" + GetRandomSentinelString() + "\"";
       break;
 
     case Field::MESSAGE:
@@ -179,15 +177,14 @@ void PopulateField(Printer* printer, const Field* field,
       break;
     }
 
-    if (field->type() != Field::MESSAGE && field->type()) {
+    if (field->type() != Field::MESSAGE) {
       if (field->is_repeated()) {
         printer->Print(*vars, "$parent_input_message_name$$deref$"
               "add_$field_name$($field_name$);\n");
         printer->Print(*vars, "$parent_input_message_name$$deref$"
               "add_$field_name$($field_name$);\n\n");
       } else {
-        printer->Print(*vars, "$parent_input_message_name$$deref$"
-              "set_$field_name$($field_name$);\n\n");
+        printer->Print(*vars, "$parent_input_message_name$.$field_name$ = $random_data$\n\n");
       }
     }
 }
@@ -199,9 +196,9 @@ void PopulateMessage(Printer* printer, const Message* message,
 
   printer->Print(*vars, "$parent_input_message_name$ := &pb.$message_name${}\n");
 
-  // for (int i = 0; i < message->field_count(); ++i) {
-  //   PopulateField(printer, message->field(i).get(), vars, dot_dereference);
-  // }
+  for (int i = 0; i < message->field_count(); ++i) {
+    PopulateField(printer, message->field(i).get(), vars, dot_dereference);
+  }
 }
 
 
@@ -487,9 +484,9 @@ void PrintClientService(Printer *printer, const Service *service,
 
   for (int i = 0; i < service->method_count(); ++i) {
     (*vars)["method_name"] = service->method(i)->name();
-    printer->Print(*vars, "fmt.Printf(\"Calling $Service$.$method_name$:\")\n");
+    printer->Print(*vars, "fmt.Printf(\"Calling $Service$.$method_name$:\\n\")\n");
     printer->Print(*vars, "$Service$$method_name$($Service_lowercase$_client);\n");
-    printer->Print(*vars, "fmt.Printf(\"Done calling $Service$.$method_name$:\")\n");
+    printer->Print(*vars, "fmt.Printf(\"Done calling $Service$.$method_name$:\\n\")\n");
   }
 
 }
@@ -535,6 +532,8 @@ grpc::string GetClientHeaders(File *file, const Parameters &params) {
     printer->Print(
         "\"flag\"\n"
         "\"log\"\n"
+        "\"net\"\n"
+        "\"strconv\"\n"
         "\"fmt\"\n\n"
         "\"golang.org/x/net/context\"\n"
         "\"google.golang.org/grpc\"\n\n");
@@ -547,8 +546,8 @@ grpc::string GetClientHeaders(File *file, const Parameters &params) {
     printer->Print(
       "tls                = flag.Bool(\"use_tls\", false, \"Connection uses TLS if true, else plain TCP.\")\n"
       "caFile             = flag.String(\"custom_ca_file\", \"testdata/ca.pem\", \"The file containning the CA root cert file.\")\n"
-      "serverAddr         = flag.String(\"server_host\", \"127.0.0.1\", \"Server host to connect to.\")\n"
-      "serverPort         = flag.String(\"server_port\", \"8080\", \"Server port.\")\n"
+      "serverHost         = flag.String(\"server_host\", \"127.0.0.1\", \"Server host to connect to.\")\n"
+      "serverPort         = flag.Int(\"server_port\", 8080, \"Server port.\")\n"
       "serverHostOverride = flag.String(\"server_host_override\", \"foo.test.google.fr\", \"The server name use to verify the hostname returned by TLS handshake.\");\n");
     printer->Outdent();
     printer->Print(")\n\n");
@@ -575,9 +574,10 @@ grpc::string GetClientBody(File *file, const Parameters &params) {
     printer->Print("func main() {\n\n");
     printer->Indent();
 
-    printer->Print("flag.Parse()\n\n");
+    printer->Print("flag.Parse()\n");
+    printer->Print("serverAddr := net.JoinHostPort(*serverHost, strconv.Itoa(*serverPort))\n");
 
-    printer->Print("conn, err := grpc.Dial(\"localhost:50051\", grpc.WithInsecure())\n"
+    printer->Print("conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())\n"
         "if err != nil {\n"
         "\tlog.Fatalf(\"did not connect: %v\", err)\n"
         "}\n"
