@@ -33,7 +33,7 @@
 
 #include <map>
 
-#include "cpp_client_generator.h"
+#include "old_cpp_client_generator.h"
 
 #include <sstream>
 #include <algorithm>

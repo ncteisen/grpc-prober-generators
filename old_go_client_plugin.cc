@@ -39,7 +39,7 @@
 #include <cstdlib>
 
 #include "config.h"
-#include "cpp_client_generator.h"
+#include "old_go_client_generator.h"
 
 // ********************** Helper Functions ***********************//
 
@@ -536,12 +536,10 @@ bool CppGrpcClientGenerator::Generate(
   grpc::string file_name = StripProto(file->name());
 
   grpc::string header_code =
-      grpc_cpp_client_generator::GetClientPrologue(&pbfile, generator_parameters) +
-      grpc_cpp_client_generator::GetClientIncludes(&pbfile, generator_parameters) +
-      grpc_cpp_client_generator::GetClientServices(&pbfile, generator_parameters) +
-      grpc_cpp_client_generator::GetClientEpilogue(&pbfile, generator_parameters);
+      grpc_cpp_client_generator::GetClientHeaders(&pbfile, generator_parameters) + 
+      grpc_cpp_client_generator::GetClientBody(&pbfile, generator_parameters);
   std::unique_ptr<grpc::protobuf::io::ZeroCopyOutputStream> client_output(
-      context->Open(file_name + ".grpc.client.pb.cc"));
+      context->Open(file_name + ".grpc.client.pb.go"));
   grpc::protobuf::io::CodedOutputStream client_coded_out(client_output.get());
   client_coded_out.WriteRaw(header_code.data(), header_code.size());
 

@@ -33,7 +33,7 @@
 
 #include <map>
 
-#include "go_client_generator.h"
+#include "old_go_client_generator.h"
 
 #include <sstream>
 #include <algorithm>
