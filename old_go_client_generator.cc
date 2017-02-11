@@ -537,7 +537,8 @@ grpc::string GetClientHeaders(File *file, const Parameters &params) {
         "\"fmt\"\n\n"
         "\"golang.org/x/net/context\"\n"
         "\"google.golang.org/grpc\"\n\n");
-    printer->Print(vars, "pb \"generated_pb_files/$filename_base$\"\n");
+    printer->Print(
+        vars, "pb \"generated_pb_files/$proto_filename_without_ext$\"\n");
     printer->Outdent();
     printer->Print(")\n\n");
 

@@ -37,11 +37,11 @@
 
 #include "abstract_generator.h"
 
-class CppGrpcClientGenerator : public AbstractGenerator {
+class GoGrpcClientGenerator : public AbstractGenerator {
  private:
   grpc::string GetLanguageSpecificFileExtension() const 
   { 
-    return ".grpc.client.pb.cc"; 
+    return ".grpc.client.pb.go"; 
   }
 
   grpc::string GetCommentPrefix() const 
@@ -51,69 +51,56 @@ class CppGrpcClientGenerator : public AbstractGenerator {
 
   void PrintPackage(Printer &printer, vars_t &vars) const
   {
-    // nothing to do for c++
+    printer.Print("package main\n\n");
   }
-
+  
   void PrintIncludes(Printer &printer, vars_t &vars) const
   {
-    // headers
-    std::vector<grpc::string> headers = {
-        "iostream",
-        "memory",
-        "string",
-        "cstdint",
-        "thread",
-        "gflags/gflags.h",
-        "grpc++/grpc++.h",
-        "grpc/support/log.h",
-        "grpc/support/useful.h"};
-    
-    for (auto i = headers.begin(); i != headers.end(); i++) {
-      vars["header"] = *i;
-      printer.Print(vars, "#include <$header$>\n");
-    }
-
+    printer.Print("import (\n");
+    printer.Indent();
     printer.Print(
-      vars, "\n#include \"$proto_filename_without_ext$.grpc.pb.h\"\n\n");
+        "\"flag\"\n"
+        "\"log\"\n"
+        "\"net\"\n"
+        "\"strconv\"\n"
+        "\"fmt\"\n\n"
+        "\"golang.org/x/net/context\"\n"
+        "\"google.golang.org/grpc\"\n\n");
+    printer.Print(
+        vars, "pb \"generated_pb_files/$proto_filename_without_ext$\"\n");
+    printer.Outdent();
+    printer.Print(")\n\n");
   }
-
+  
   void PrintFlags(Printer &printer, vars_t &vars) const
   {
+    printer.Print("var (\n");
+    printer.Indent();
     printer.Print(
-      "// In some distros, gflags is in the namespace "
-      "google, and in some others,\n"
-      "// in gflags. This hack is enabling us to find both.\n"
-      "namespace google {}\n"
-      "namespace gflags {}\n"
-      "using namespace google;\n"
-      "using namespace gflags;\n\n");
-
-    // print the flag definitions
-    printer.Print("DEFINE_bool(use_tls, false, \"Connection uses TLS if true, else plain TCP.\");\n"
-        "DEFINE_string(custom_ca_file, \"\", "
-            "\"The file containning the CA root cert file.\");\n"
-        "DEFINE_int32(server_port, 8080, \"Server port.\");\n"
-        "DEFINE_string(server_host, \"localhost\", "
-            "\"Server host to connect to\");\n"
-        "DEFINE_string(server_host_override, \"foo.test.google.fr\",\n"
-        "\t\t\"The server name use to verify the hostname returned by TLS handshake\");\n\n");
+      "tls                = flag.Bool(\"use_tls\", false, \"Connection uses TLS if true, else plain TCP.\")\n"
+      "caFile             = flag.String(\"custom_ca_file\", \"testdata/ca.pem\", \"The file containning the CA root cert file.\")\n"
+      "serverHost         = flag.String(\"server_host\", \"127.0.0.1\", \"Server host to connect to.\")\n"
+      "serverPort         = flag.Int(\"server_port\", 8080, \"Server port.\")\n"
+      "serverHostOverride = flag.String(\"server_host_override\", \"foo.test.google.fr\", \"The server name use to verify the hostname returned by TLS handshake.\");\n");
+    printer.Outdent();
+    printer.Print(")\n\n");
   }
 
   void DoPrintMessagePopulatingFunctionDecl(
       Printer &printer, vars_t &vars) const
   {
-    printer.Print(vars, "void Populate$name$($type$ &message);\n");
+    // no decls needed for go
   }
 
   void DoPrintMessagePrintingFunctionDecl(
       Printer &printer, vars_t &vars) const
   {
-     printer.Print(vars, "void Print$name$($type$ &message);\n");
+     // no decls needed for go
   }
 
   void StartMain(Printer &printer) const
   {
-    printer.Print("int main() {\n");
+    printer.Print("func main() {\n");
     printer.Indent();
   }
 
@@ -122,12 +109,11 @@ class CppGrpcClientGenerator : public AbstractGenerator {
     printer.Outdent();
     printer.Print("}\n");
   }
-
 };
 
 
 int main(int argc, char *argv[]) {
   srand(time(NULL));
-  CppGrpcClientGenerator generator;
+  GoGrpcClientGenerator generator;
   return grpc::protobuf::compiler::PluginMain(argc, argv, &generator);
 }
