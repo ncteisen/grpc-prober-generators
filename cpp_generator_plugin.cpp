@@ -99,25 +99,110 @@ class CppGrpcClientGenerator : public AbstractGenerator {
         "\t\t\"The server name use to verify the hostname returned by TLS handshake\");\n\n");
   }
 
+  void DoCreateChannel(Printer &printer) const
+  {
+    printer.Print("const int host_port_buf_size = 1024;\n"
+                   "char host_port[host_port_buf_size];\n"
+                   "snprintf(host_port, host_port_buf_size, \"%s:%d\", "
+                   "FLAGS_server_host.c_str(), FLAGS_server_port);\n"
+                   "std::shared_ptr<grpc::Channel> channel = \n"
+                   "\t\tgrpc::CreateChannel(host_port, grpc::InsecureChannelCredentials());\n\n");
+  }
+
+  void DoParseFlags(Printer &printer) const
+  {
+    printer.Print("ParseCommandLineFlags(&argc, &argv, true);\n");
+  }
+
   void DoPrintMessagePopulatingFunctionDecl(
       Printer &printer, vars_t &vars) const
   {
-    printer.Print(vars, "void Populate$name$($type$ &message);\n");
+    printer.Print(
+        vars, "void Populate$message_name$($message_type$ *message);\n");
   }
 
   void DoPrintMessagePrintingFunctionDecl(
       Printer &printer, vars_t &vars) const
   {
-     printer.Print(vars, "void Print$name$($type$ &message);\n");
+     printer.Print(
+        vars, "void Print$message_name$($message_type$ *message);\n");
+  }
+
+  void DoPrintMessagePopulatingFunctionStart(
+      Printer &printer, vars_t &vars) const
+  {
+    printer.Print(
+        vars, "void Populate$message_name$($message_type$ *message) {\n");
+    printer.Indent();
+  }
+
+  void DoPrintMethodProbeStart(Printer &printer, vars_t &vars) const
+  {
+    printer.Print(vars, "void Probe$service_name$$method_name$("
+                        "std::shared_ptr<$full_service_name$::Stub> stub) {\n");
+    printer.Indent();
+  }
+
+  void DoPrintServiceProbeStart(Printer &printer, vars_t &vars) const
+  {
+    printer.Print(
+        vars, "void Probe$service_name$(std::shared_ptr<grpc::Channel> channel) {\n");
+    printer.Indent();
+  }
+
+  void DoCreateStub(Printer &printer, vars_t &vars) const
+  {
+    printer.Print(vars, "std::shared_ptr<$full_service_name$::Stub> stub =\n"
+                        "\t\t$full_service_name$::NewStub(channel);\n");
+  }
+
+  void DoPopulateInteger(Printer &printer, vars_t &vars) const
+  {
+    printer.Print(vars, "message->set_$field_name$(0);\n");
+  }
+
+  void DoPopulateString(Printer &printer, vars_t &vars) const
+  {
+    printer.Print(vars, "message->set_$field_name$(\"hello world\");\n");
+  }
+
+  void DoPopulateBool(Printer &printer, vars_t &vars) const
+  {
+    printer.Print(vars, "message->set_$field_name$(true);\n");
+  }
+
+  void DoPopulateFloat(Printer &printer, vars_t &vars) const
+  {
+    printer.Print(vars, "message->set_$field_name$(5.5);\n");
+  }
+
+  void DoPopulateEnum(Printer &printer, vars_t &vars) const
+  {
+    printer.Print(vars, "message->set_$field_name$($enum_type$);\n");
+  }
+
+  void DoPopulateMessage(Printer &printer, vars_t &vars) const
+  {
+    printer.Print(vars, "Populate$message_name$(message->mutable_$field_name$());\n");
+  }
+
+  void DoUnaryUnary(Printer &printer, vars_t &vars) const
+  {
+    printer.Print(vars, "$request_type$ request;\n");
+    printer.Print(vars, "$response_type$ response;\n");
+    printer.Print("grpc::ClientContext context;\n\n");
+    printer.Print(vars, "Populate$request_name$(&request);\n\n");
+    printer.Print(vars, "grpc::Status status = stub->$method_name$(&context, request, &response);\n\n");
+    printer.Print("GPR_ASSERT(status.ok());\n");
   }
 
   void StartMain(Printer &printer) const
   {
-    printer.Print("int main() {\n");
+    printer.Print("int main(int argc, char** argv) {\n");
     printer.Indent();
   }
 
-  void EndMain(Printer &printer) const
+  void EndFunction(Printer &printer) const
   {
     printer.Outdent();
     printer.Print("}\n");

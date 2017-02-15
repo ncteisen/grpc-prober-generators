@@ -86,6 +86,22 @@ class AbstractGenerator : public grpc::protobuf::compiler::CodeGenerator {
   void PrintMessagePrintingFunctionDecl(
     const grpc::protobuf::Descriptor *message, Printer &printer) const;
 
+  void PopulateInteger(
+    const grpc::protobuf::FieldDescriptor *field,
+    Printer &printer, vars_t &vars) const;
+
+  void PrintPopulateField(
+    const grpc::protobuf::FieldDescriptor *field,
+    Printer &printer, vars_t &vars) const;
+
+  // NOTE vars not by ref
+  void DeclareAndPopulateField(
+    const grpc::protobuf::Descriptor *message, 
+    Printer &printer, vars_t vars) const;
+  void PopulateEnum(
+    const google::protobuf::EnumDescriptor *enum_, 
+    Printer &printer, vars_t vars) const;
+
   // prints a function responsible for populating and returning
   // the particular message type.
   void PrintMessagePopulatingFunction(
@@ -112,6 +128,10 @@ class AbstractGenerator : public grpc::protobuf::compiler::CodeGenerator {
   // Generates the function that probes a particular service by calling
   // all of the methods of that service.
   void PrintServiceProbe(
+      const grpc::protobuf::ServiceDescriptor *service,
+      Printer &printer) const;
+
+  void PrintServiceProbeCall(
       const grpc::protobuf::ServiceDescriptor *service,
       Printer &printer) const;
 
@@ -145,8 +165,29 @@ class AbstractGenerator : public grpc::protobuf::compiler::CodeGenerator {
   virtual void DoPrintMessagePrintingFunctionDecl(
     Printer &printer, vars_t &vars) const = 0;
 
+  virtual void DoPrintMessagePopulatingFunctionStart(
+    Printer &printer, vars_t &vars) const = 0;
+
+  virtual void DoPrintServiceProbeStart(
+    Printer &printer, vars_t &vars) const = 0;
+
+  virtual void DoPrintMethodProbeStart(
+    Printer &printer, vars_t &vars) const = 0;
+
+  virtual void DoPopulateInteger(Printer &printer, vars_t &vars) const = 0;
+  virtual void DoPopulateString(Printer &printer, vars_t &vars) const = 0;
+  virtual void DoPopulateBool(Printer &printer, vars_t &vars) const = 0;
+  virtual void DoPopulateFloat(Printer &printer, vars_t &vars) const = 0;
+  virtual void DoPopulateMessage(Printer &printer, vars_t &vars) const = 0;
+  virtual void DoPopulateEnum(Printer &printer, vars_t &vars) const = 0;
+  virtual void DoCreateStub(Printer &printer, vars_t &vars) const = 0;
+  virtual void DoUnaryUnary(Printer &printer, vars_t &vars) const = 0;
+
+  virtual void DoCreateChannel(Printer &printer) const = 0;
+  virtual void DoParseFlags(Printer &printer) const = 0;
+
   virtual void StartMain(Printer &printer) const = 0;
-  virtual void EndMain(Printer &printer) const = 0;
+  virtual void EndFunction(Printer &printer) const = 0;
 
   // Internal object representation of the proto file.
   // Needs to be mutable so the const Generate method can set it.

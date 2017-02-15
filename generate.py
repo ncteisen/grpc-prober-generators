@@ -28,6 +28,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""
+Helper script that handles all of the meta work that must be done in order
+for client generation to occur for a particular language.
+"""
+
 from __future__ import print_function
 
 import argparse
@@ -37,6 +42,7 @@ import itertools
 import subprocess
 import shutil
 
+# C++ specific makefile
 _MAKEFILE_TEMPLATE = """HOST_SYSTEM = $(shell uname | cut -f 1 -d_)
 SYSTEM ?= $(HOST_SYSTEM)
 CXX = g++
@@ -77,6 +83,7 @@ clean:
 	rm -f *.o *.pb.cc *.pb.h generated_client
 """
 
+# ensure we run from the root dir of the repo
 ROOT = os.path.abspath(os.path.dirname(sys.argv[0]))
 os.chdir(ROOT)
 

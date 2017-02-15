@@ -36,19 +36,11 @@ LDFLAGS += -L/usr/local/lib -lprotobuf -lprotoc
 
 all: grpc_cpp_client_generator grpc_go_client_generator
 
-old: old_grpc_cpp_client_generator old_grpc_go_client_generator
-
 grpc_cpp_client_generator: cpp_generator_plugin.o abstract_generator.o
 	$(CXX) $^ $(LDFLAGS) -o $@
 
 grpc_go_client_generator: go_generator_plugin.o abstract_generator.o
 	$(CXX) $^ $(LDFLAGS) -o $@
 
-old_grpc_cpp_client_generator: old_cpp_client_plugin.o old_cpp_client_generator.o
-	$(CXX) $^ $(LDFLAGS) -o $@
-
-old_grpc_go_client_generator: old_go_client_plugin.o old_go_client_generator.o
-	$(CXX) $^ $(LDFLAGS) -o $@
-
 clean:
-	rm -f *.o old_grpc_cpp_client_generator old_grpc_go_client_generator grpc_cpp_client_generator
+	rm -f *.o grpc_cpp_client_generator grpc_go_client_generator
