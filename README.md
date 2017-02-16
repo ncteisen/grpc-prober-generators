@@ -17,29 +17,32 @@ make the test useful.
 
 At this point the generator code only makes clients. To see an example of the
 generator working, we will use the cpp helloworld example that can be found
-under examples/cpp/helloworld. Starting from the top of the gRPC repo:
+under examples/cpp/helloworld of the main gRPC repo. The README assumes that you have this repo in the same directory as the main grpc repo.
+
+The simplest way to start is to use the generator python script. This does a lot of the metawork associated with getting the generated client running.
 
 ```
-# build the plugins
-make
-
-# generate the client
-cd helloworld
-make
-
-# run the generated client. Note that you may want to start up an the
-# greeter server binary found in grpc/example/cpp/helloworld
-./generated_client --server_host localhost --server_port 50051
+python generate.py --proto ../grpc/examples/protos/helloworld --language c++ go
 ```
 
-Examine the contents of `helloworld.grpc.client.pb.cc`; it should be easy to see
-whats going on.
+This will create two new directories, helloworld_cpp and helloworld_go. Each of these directories will contain the generated clients. To invoke each client:
+
+```
+./helloworld_cpp/generated_client --server_port 8080
+./helloworld_go/helloworld.grpc.client.pb.go --server_port 8080
+```
+
+## Design
+
+The abstract_generator.* files define an abstract base class that handles all generation logic specific to the proto file. When if comes time to do the language specific logic, the base class calls pure virtual functions that will be overridden by per-language concrete base classes.
+
+Adding a new language should be as simple as creating a new base class and implementing the pure virtual functions from abstract_generator.h
 
 ## Future plans
 
 * More features
   - calls with metadata
   - async gRPC
-
 * All supported client languages
 * TLS support for connecting to already running services
+* Proto population from file instead of sentinel values
