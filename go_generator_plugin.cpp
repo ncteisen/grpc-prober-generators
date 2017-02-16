@@ -49,21 +49,22 @@ class GoGrpcClientGenerator : public AbstractGenerator {
     return "// "; 
   }
 
-  void PrintPackage(Printer &printer, vars_t &vars) const
+  void DoPrintPackage(Printer &printer, vars_t &vars) const
   {
     printer.Print("package main\n\n");
   }
   
-  void PrintIncludes(Printer &printer, vars_t &vars) const
+  void DoPrintIncludes(Printer &printer, vars_t &vars) const
   {
     printer.Print("import (\n");
     printer.Indent();
     printer.Print(
         "\"flag\"\n"
-        "\"log\"\n"
         "\"net\"\n"
+        "\"fmt\"\n"
         "\"strconv\"\n\n"
         "\"golang.org/x/net/context\"\n"
+        "\"google.golang.org/grpc/grpclog\"\n"
         "\"google.golang.org/grpc\"\n\n");
     printer.Print(
         vars, "pb \"generated_pb_files/$proto_filename_without_ext$\"\n");
@@ -71,7 +72,7 @@ class GoGrpcClientGenerator : public AbstractGenerator {
     printer.Print(")\n\n");
   }
   
-  void PrintFlags(Printer &printer, vars_t &vars) const
+  void DoPrintFlags(Printer &printer, vars_t &vars) const
   {
     printer.Print("var (\n");
     printer.Indent();
@@ -90,12 +91,22 @@ class GoGrpcClientGenerator : public AbstractGenerator {
     printer.Print("flag.Parse()\n");
   }
 
+  void DoStartPrint(Printer &printer) const
+  {
+    printer.Print("fmt.Println(\"");
+  }
+
+  void DoEndPrint(Printer &printer) const
+  {
+    printer.Print("\")\n");
+  }
+
   void DoCreateChannel(Printer &printer) const
   {
     printer.Print("serverAddr := net.JoinHostPort(*serverHost, strconv.Itoa(*serverPort))\n");
     printer.Print("channel, err := grpc.Dial(serverAddr, grpc.WithInsecure())\n"
         "if err != nil {\n"
-        "\tlog.Fatalf(\"did not connect: %v\", err)\n"
+        "\tgrpclog.Fatalf(\"did not connect: %v\", err)\n"
         "}\n"
         "defer channel.Close()\n\n");
   }
@@ -104,12 +115,6 @@ class GoGrpcClientGenerator : public AbstractGenerator {
       Printer &printer, vars_t &vars) const
   {
     // no decls needed for go
-  }
-
-  void DoPrintMessagePrintingFunctionDecl(
-      Printer &printer, vars_t &vars) const
-  {
-     // no decls needed for go
   }
 
   void DoPrintMethodProbeStart(Printer &printer, vars_t &vars) const
@@ -141,12 +146,12 @@ class GoGrpcClientGenerator : public AbstractGenerator {
 
   void DoPopulateInteger(Printer &printer, vars_t &vars) const
   {
-    printer.Print(vars, "message.$upper_field_name$ = 5\n");
+    printer.Print(vars, "message.$upper_field_name$ = 0\n");
   }
 
   void DoPopulateString(Printer &printer, vars_t &vars) const
   {
-    printer.Print(vars, "message.$upper_field_name$ = \"test\"\n");
+    printer.Print(vars, "message.$upper_field_name$ = \"hello world\"\n");
   }
 
   void DoPopulateBool(Printer &printer, vars_t &vars) const
@@ -156,7 +161,7 @@ class GoGrpcClientGenerator : public AbstractGenerator {
 
   void DoPopulateFloat(Printer &printer, vars_t &vars) const
   {
-    printer.Print(vars, "message.$upper_field_name$ = 5.5\n");
+    printer.Print(vars, "message.$upper_field_name$ = 0\n");
   }
 
   void DoPopulateEnum(Printer &printer, vars_t &vars) const
@@ -173,21 +178,21 @@ class GoGrpcClientGenerator : public AbstractGenerator {
   {
     printer.Print(vars, "request := &pb.$request_name${}\n");
     printer.Print(vars, "Populate$request_name$(request)\n\n");
-    printer.Print(vars, "resp, err := stub.$method_name$(context.Background(), request)\n\n");
+    printer.Print(vars, "_, err := stub.$method_name$(context.Background(), request)\n\n");
     printer.Print("if err != nil {\n");
     printer.Indent();
-    printer.Print("log.Fatalf(\"Error occurred: %v\", err)\n");
+    printer.Print("grpclog.Fatalf(\"Error occurred: %v\", err)\n");
     printer.Outdent();
     printer.Print("}\n");
   }
 
-  void StartMain(Printer &printer) const
+  void DoStartMain(Printer &printer) const
   {
     printer.Print("func main() {\n");
     printer.Indent();
   }
 
-  void EndFunction(Printer &printer) const
+  void DoEndFunction(Printer &printer) const
   {
     printer.Outdent();
     printer.Print("}\n");

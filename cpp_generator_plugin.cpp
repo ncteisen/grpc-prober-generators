@@ -49,12 +49,12 @@ class CppGrpcClientGenerator : public AbstractGenerator {
     return "// "; 
   }
 
-  void PrintPackage(Printer &printer, vars_t &vars) const
+  void DoPrintPackage(Printer &printer, vars_t &vars) const
   {
     // nothing to do for c++
   }
 
-  void PrintIncludes(Printer &printer, vars_t &vars) const
+  void DoPrintIncludes(Printer &printer, vars_t &vars) const
   {
     // headers
     std::vector<grpc::string> headers = {
@@ -77,7 +77,7 @@ class CppGrpcClientGenerator : public AbstractGenerator {
       vars, "\n#include \"$proto_filename_without_ext$.grpc.pb.h\"\n\n");
   }
 
-  void PrintFlags(Printer &printer, vars_t &vars) const
+  void DoPrintFlags(Printer &printer, vars_t &vars) const
   {
     printer.Print(
       "// In some distros, gflags is in the namespace "
@@ -114,18 +114,21 @@ class CppGrpcClientGenerator : public AbstractGenerator {
     printer.Print("ParseCommandLineFlags(&argc, &argv, true);\n");
   }
 
+  void DoStartPrint(Printer &printer) const
+  {
+    printer.Print("std::cout << \"");
+  }
+
+  void DoEndPrint(Printer &printer) const
+  {
+    printer.Print("\" << std::endl;\n");
+  }
+
   void DoPrintMessagePopulatingFunctionDecl(
       Printer &printer, vars_t &vars) const
   {
     printer.Print(
         vars, "void Populate$message_name$($message_type$ *message);\n");
-  }
-
-  void DoPrintMessagePrintingFunctionDecl(
-      Printer &printer, vars_t &vars) const
-  {
-     printer.Print(
-        vars, "void Print$message_name$($message_type$ *message);\n");
   }
 
   void DoPrintMessagePopulatingFunctionStart(
@@ -196,13 +199,13 @@ class CppGrpcClientGenerator : public AbstractGenerator {
     printer.Print("GPR_ASSERT(status.ok());\n");
   }
 
-  void StartMain(Printer &printer) const
+  void DoStartMain(Printer &printer) const
   {
     printer.Print("int main(int argc, char** argv) {\n");
     printer.Indent();
   }
 
-  void EndFunction(Printer &printer) const
+  void DoEndFunction(Printer &printer) const
   {
     printer.Outdent();
     printer.Print("}\n");

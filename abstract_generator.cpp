@@ -56,8 +56,9 @@ static grpc::string StripProto(grpc::string filename) {
   return filename;
 }
 
+// Static helper.
 grpc::string StringReplace(grpc::string str, const grpc::string &from,
-                                  const grpc::string &to, bool replace_all) {
+                            const grpc::string &to, bool replace_all = true) {
   size_t pos = 0;
 
   do {
@@ -72,21 +73,13 @@ grpc::string StringReplace(grpc::string str, const grpc::string &from,
   return str;
 }
 
-static grpc::string StringReplace(grpc::string str, const grpc::string &from,
-                                  const grpc::string &to) {
-  return StringReplace(str, from, to, true);
-}
-
+// Static helper. foo.bar.test --> foo::bar::test
 static grpc::string DotsToColons(const grpc::string &name) {
   return StringReplace(name, ".", "::");
 }
 
-static grpc::string DotsToUnderscores(const grpc::string &name) {
-  return StringReplace(name, ".", "_");
-}
-
-static grpc::string ClassName(const grpc::protobuf::Descriptor *descriptor,
-                              bool qualified) {
+// Static helper. Returned qualified c++ call type of protobuf descriptor
+static grpc::string ClassName(const grpc::protobuf::Descriptor *descriptor) {
   // Find "outer", the descriptor of the top-level message in which
   // "descriptor" is embedded.
   const grpc::protobuf::Descriptor *outer = descriptor;
@@ -95,11 +88,7 @@ static grpc::string ClassName(const grpc::protobuf::Descriptor *descriptor,
   const grpc::string &outer_name = outer->full_name();
   grpc::string inner_name = descriptor->full_name().substr(outer_name.size());
 
-  if (qualified) {
-    return "::" + DotsToColons(outer_name) + DotsToUnderscores(inner_name);
-  } else {
-    return outer->name() + DotsToUnderscores(inner_name);
-  }
+  return "::" + DotsToColons(outer_name) + StringReplace(inner_name, ".", "_");
 }
 
 grpc::string AbstractGenerator::GenerateHeaders() const
@@ -119,9 +108,9 @@ grpc::string AbstractGenerator::GenerateHeaders() const
 
     printer.NewLine();
 
-    PrintPackage(printer, vars);
-    PrintIncludes(printer, vars);
-    PrintFlags(printer, vars);
+    DoPrintPackage(printer, vars);
+    DoPrintIncludes(printer, vars);
+    DoPrintFlags(printer, vars);
   }
   return output;
 }
@@ -148,18 +137,9 @@ void AbstractGenerator::PrintMessagePopulatingFunctionDecl(
     const grpc::protobuf::Descriptor *message, Printer &printer) const
 {
   vars_t vars;
-  vars["message_type"] = ClassName(message, true);
+  vars["message_type"] = ClassName(message);
   vars["message_name"] = message->name();
   DoPrintMessagePopulatingFunctionDecl(printer, vars);
-}
-
-void AbstractGenerator::PrintMessagePrintingFunctionDecl(
-    const grpc::protobuf::Descriptor *message, Printer &printer) const
-{
-  vars_t vars;
-  vars["message_type"] = ClassName(message, true);
-  vars["message_name"] = message->name();
-  DoPrintMessagePrintingFunctionDecl(printer, vars);
 }
 
 void AbstractGenerator::DeclareAndPopulateField(
@@ -226,7 +206,7 @@ void AbstractGenerator::PrintMessagePopulatingFunction(
     const grpc::protobuf::Descriptor *message, Printer &printer) const
 {
   vars_t vars;
-  vars["message_type"] = ClassName(message, true);
+  vars["message_type"] = ClassName(message);
   vars["message_name"] = message->name();
   DoPrintMessagePopulatingFunctionStart(printer, vars);
 
@@ -234,16 +214,8 @@ void AbstractGenerator::PrintMessagePopulatingFunction(
     PrintPopulateField(message->field(i), printer, vars);
   }
 
-  EndFunction(printer);
+  DoEndFunction(printer);
   printer.NewLine();
-}
-
-void AbstractGenerator::PrintMessagePrintingFunction(
-    const grpc::protobuf::Descriptor *message, Printer &printer) const
-{
-  vars_t vars;
-  vars["message_type"] = ClassName(message, true);
-  vars["message_name"] = message->name();
 }
 
 grpc::string AbstractGenerator::GenerateMessagePopulationFunctions() const
@@ -251,13 +223,11 @@ grpc::string AbstractGenerator::GenerateMessagePopulationFunctions() const
   // First we make sets of all of the message types needed
   // by the input proto file.
   std::set<const grpc::protobuf::Descriptor*> input_messages;
-  std::set<const grpc::protobuf::Descriptor*> output_messages;
   for (int i = 0; i < file->service_count(); ++i) {
     auto service = file->service(i);
     for (int j = 0; j < service->method_count(); ++j) {
       auto method = service->method(j);
       RecursivlyTrackMessages(method->input_type(), input_messages);
-      RecursivlyTrackMessages(method->output_type(), output_messages);
     }
   }
 
@@ -269,18 +239,10 @@ grpc::string AbstractGenerator::GenerateMessagePopulationFunctions() const
         it != input_messages.end(); ++it) {
       PrintMessagePopulatingFunctionDecl(*it, printer);
     }
-    for (auto it = output_messages.begin(); 
-        it != output_messages.end(); ++it) {
-      PrintMessagePrintingFunctionDecl(*it, printer);
-    }
     printer.NewLine();
     for (auto it = input_messages.begin(); 
         it != input_messages.end(); ++it) {
       PrintMessagePopulatingFunction(*it, printer);
-    }
-    for (auto it = output_messages.begin(); 
-        it != output_messages.end(); ++it) {
-      PrintMessagePrintingFunction(*it, printer);
     }
     printer.NewLine();
   }
@@ -292,23 +254,28 @@ void AbstractGenerator::PrintMethodProbeFunction(
     Printer &printer, vars_t &vars) const
 {
   vars["method_name"] = method->name();
-  vars["request_type"] = ClassName(method->input_type(), true);
-  vars["response_type"] = ClassName(method->output_type(), true);
+  vars["request_type"] = ClassName(method->input_type());
+  vars["response_type"] = ClassName(method->output_type());
   vars["request_name"] = method->input_type()->name();
   vars["response_name"] = method->output_type()->name();
 
   DoPrintMethodProbeStart(printer, vars);
+  DoStartPrint(printer);
+  printer.Print(vars, "\\tProbing $method_name$...");
+  DoEndPrint(printer);
+  printer.NewLine();
 
   if (method->client_streaming() || method->server_streaming()) {
     PrintComment(printer, "We do not support probing streaming methods at this time");
     PrintComment(printer, "Please fill this function in which your own streaming specific logic");
-    EndFunction(printer);
+    PrintString(printer, vars, "\\t\\tStreaming not yet supported!!");
+    DoEndFunction(printer);
     return;
   } 
 
   DoUnaryUnary(printer, vars);
 
-  EndFunction(printer);
+  DoEndFunction(printer);
 }
 
 void AbstractGenerator::PrintMethodProbeCall(
@@ -334,6 +301,12 @@ void AbstractGenerator::PrintServiceProbe(
   }
 
   DoPrintServiceProbeStart(printer, vars);
+
+  DoStartPrint(printer);
+  printer.Print(vars, "Probing $service_name$:");
+  DoEndPrint(printer);
+  printer.NewLine();
+
   DoCreateStub(printer, vars);
   printer.NewLine();
 
@@ -343,7 +316,7 @@ void AbstractGenerator::PrintServiceProbe(
     PrintMethodProbeCall(service->method(i), printer, vars);
   }
 
-  EndFunction(printer);
+  DoEndFunction(printer);
   printer.NewLine();
 }
 
@@ -373,7 +346,10 @@ grpc::string AbstractGenerator::GenerateMain() const
   grpc::string output;
   {
     Printer printer(&output);
-    StartMain(printer);
+    DoStartMain(printer);
+    vars_t vars;
+    PrintString(printer, vars, "Prober started");
+    printer.NewLine();
     DoParseFlags(printer);
     printer.NewLine();
 
@@ -383,7 +359,8 @@ grpc::string AbstractGenerator::GenerateMain() const
       PrintServiceProbeCall(file->service(i), printer);
     }
     printer.NewLine();
-    EndFunction(printer);
+    PrintString(printer, vars, "Prober finished");
+    DoEndFunction(printer);
   }
   return output;
 }
@@ -411,6 +388,14 @@ void AbstractGenerator::PrintComment(Printer &printer,
     grpc::string str) const {
   grpc::string with_prefix = GetCommentPrefix() + str + "\n";
   printer.Print(with_prefix.c_str());
+}
+
+void AbstractGenerator::PrintString(Printer &printer, 
+    vars_t &vars, grpc::string str) const {
+  vars["to_send"] = str;
+  DoStartPrint(printer);
+  printer.Print(vars, "$to_send$");
+  DoEndPrint(printer);
 }
 
 // this function is called by the protobuf infrastructure when the protoc
