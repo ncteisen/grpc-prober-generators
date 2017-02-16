@@ -88,78 +88,78 @@ ROOT = os.path.abspath(os.path.dirname(sys.argv[0]))
 os.chdir(ROOT)
 
 class CXXLanguage:
-	def name(self):
-		return "cpp"
-	def create_makefile(self, uniquename):
-		makefile = open("Makefile", "w")
-		makefile.write(_MAKEFILE_TEMPLATE.format(uniquename=uniquename))
-		makefile.close()
-	def do_prework(self, uniquename):
-		print("c++ pre work")
-		self.create_makefile(uniquename)
-	def generate_client(self, uniquename):
-		print("c++ main work")
-		proc = subprocess.Popen(args="make")
-		proc.wait()
+  def name(self):
+    return "cpp"
+  def create_makefile(self, uniquename):
+    makefile = open("Makefile", "w")
+    makefile.write(_MAKEFILE_TEMPLATE.format(uniquename=uniquename))
+    makefile.close()
+  def do_prework(self, uniquename):
+    print("c++ pre work")
+    self.create_makefile(uniquename)
+  def generate_client(self, uniquename):
+    print("c++ main work")
+    proc = subprocess.Popen(args="make")
+    proc.wait()
 
 class GoLanguage:
-	def name(self):
-		return "go"
-	def ensure_gogendir_exists(self):
-		dirpath = os.path.expandvars("$GOPATH/src/generated_pb_files")
-		if not os.path.exists(dirpath):
-			os.makedirs(dirpath)
-	def generate_pb_files(self, uniquename):
-		# TODO(ncteisen) check for GOPATH bin stuff
-		cmd = ["protoc", "-I", ".", "--go_out=plugins=grpc:.", uniquename + ".proto"]
-		proc = subprocess.Popen(args=cmd)
-		proc.wait()
-		dirpath = os.path.expandvars("$GOPATH/src/generated_pb_files/" + uniquename)
-		if os.path.exists(dirpath):
-			shutil.rmtree(dirpath)
-		os.mkdir(dirpath)
-		shutil.move(uniquename + ".pb.go", dirpath + "/" + uniquename + ".pb.go")
-	def do_prework(self, uniquename):
-		print("go pre work")
-		self.ensure_gogendir_exists()
-		self.generate_pb_files(uniquename)
-	def generate_client(self, uniquename):
-		print("go main work")
-		cmd = ["protoc", "-I", ".", "--grpc_out=.", 
-				"--plugin=protoc-gen-grpc=../grpc_go_client_generator", 
-				uniquename + ".proto"]
-		proc = subprocess.Popen(args=cmd)
-		proc.wait()
+  def name(self):
+    return "go"
+  def ensure_gogendir_exists(self):
+    dirpath = os.path.expandvars("$GOPATH/src/generated_pb_files")
+    if not os.path.exists(dirpath):
+      os.makedirs(dirpath)
+  def generate_pb_files(self, uniquename):
+    # TODO(ncteisen) check for GOPATH bin stuff
+    cmd = ["protoc", "-I", ".", "--go_out=plugins=grpc:.", uniquename + ".proto"]
+    proc = subprocess.Popen(args=cmd)
+    proc.wait()
+    dirpath = os.path.expandvars("$GOPATH/src/generated_pb_files/" + uniquename)
+    if os.path.exists(dirpath):
+      shutil.rmtree(dirpath)
+    os.mkdir(dirpath)
+    shutil.move(uniquename + ".pb.go", dirpath + "/" + uniquename + ".pb.go")
+  def do_prework(self, uniquename):
+    print("go pre work")
+    self.ensure_gogendir_exists()
+    self.generate_pb_files(uniquename)
+  def generate_client(self, uniquename):
+    print("go main work")
+    cmd = ["protoc", "-I", ".", "--grpc_out=.", 
+        "--plugin=protoc-gen-grpc=../grpc_go_client_generator", 
+        uniquename + ".proto"]
+    proc = subprocess.Popen(args=cmd)
+    proc.wait()
 
 _LANGUAGES = {
-		'c++' : CXXLanguage(),
-		'go' : GoLanguage(),
+    'c++' : CXXLanguage(),
+    'go' : GoLanguage(),
 }
 
 argp = argparse.ArgumentParser(description='Generate a probing client')
 argp.add_argument('-l', '--language',
-									choices=['all'] + sorted(_LANGUAGES),
-									nargs='+',
-									default=['all'],
-									help='Clients languages to generate.')
+                  choices=['all'] + sorted(_LANGUAGES),
+                  nargs='+',
+                  default=['all'],
+                  help='Clients languages to generate.')
 
 argp.add_argument('-p', '--proto',
-									required=True,
-									help='proto file from which to generate')
+                  required=True,
+                  help='proto file from which to generate')
 
 args = argp.parse_args()
 
 # validate the proto arg
 if not args.proto.endswith(".proto"):
-	print("proto file needs to be .proto")
-	raise SystemExit(1)
+  print("proto file needs to be .proto")
+  raise SystemExit(1)
 
 #TODO(ncteisen): check for protoc
 
 languages = set(_LANGUAGES[l]
-								for l in itertools.chain.from_iterable(
-											_LANGUAGES.iterkeys() if x == 'all' else [x]
-											for x in args.language))
+                for l in itertools.chain.from_iterable(
+                      _LANGUAGES.iterkeys() if x == 'all' else [x]
+                      for x in args.language))
 
 
 # make the generators
@@ -168,20 +168,15 @@ proc.wait()
 
 # generate the directories for each language
 for lang in languages:
-	os.chdir(ROOT) # back to root
-	abspath = os.path.abspath(args.proto)
-	uniquename = abspath.split("/")[-1][:-6]
-	dirname = uniquename + "_" + lang.name()
-	if os.path.exists(dirname):
-		shutil.rmtree(dirname)
-	os.mkdir(dirname)
-	os.chdir(dirname)
-	shutil.copyfile(abspath, os.getcwd() + "/" + uniquename + ".proto")
-	lang.do_prework(uniquename)
-	lang.generate_client(uniquename)
-
-
-
-
-
+  os.chdir(ROOT) # back to root
+  abspath = os.path.abspath(args.proto)
+  uniquename = abspath.split("/")[-1][:-6]
+  dirname = uniquename + "_" + lang.name()
+  if os.path.exists(dirname):
+    shutil.rmtree(dirname)
+  os.mkdir(dirname)
+  os.chdir(dirname)
+  shutil.copyfile(abspath, os.getcwd() + "/" + uniquename + ".proto")
+  lang.do_prework(uniquename)
+  lang.generate_client(uniquename)
 
