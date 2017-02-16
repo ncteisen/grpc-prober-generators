@@ -110,6 +110,7 @@ class GoLanguage:
 		if not os.path.exists(dirpath):
 			os.makedirs(dirpath)
 	def generate_pb_files(self, uniquename):
+		# TODO(ncteisen) check for GOPATH bin stuff
 		cmd = ["protoc", "-I", ".", "--go_out=plugins=grpc:.", uniquename + ".proto"]
 		proc = subprocess.Popen(args=cmd)
 		proc.wait()
@@ -152,6 +153,8 @@ args = argp.parse_args()
 if not args.proto.endswith(".proto"):
 	print("proto file needs to be .proto")
 	raise SystemExit(1)
+
+#TODO(ncteisen): check for protoc
 
 languages = set(_LANGUAGES[l]
 								for l in itertools.chain.from_iterable(
