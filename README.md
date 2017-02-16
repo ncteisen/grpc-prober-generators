@@ -1,4 +1,4 @@
-#gRPC Client Generation
+#gRPC Prober Generation
 
 ## Overview
 
@@ -8,16 +8,11 @@ generation one step further. Given a proto file, the cpp_client_generator will
 produce a c++ client file that *just works*.
 
 The generated client should compile and run "out of the box." The requests will
-be programatically populated with random sentinel data. This could be used for
-fuzz testing, but should also serve as a good entry point to creating more
-focused tests. Use the generated code as a skeleton, then change the data to
-make the test useful.
+be programatically populated with random sentinel data. These clients are meant to server as the skeleton files for gRPC service probers. The idea is that they are easy to read and modify to incorporate service specific logic.
 
 ## How to use
 
-At this point the generator code only makes clients. To see an example of the
-generator working, we will use the cpp helloworld example that can be found
-under examples/cpp/helloworld of the main gRPC repo. The README assumes that you have this repo in the same directory as the main grpc repo.
+To see an example of the generator working, we will use the cpp helloworld example that can be found under examples/cpp/helloworld of the main gRPC repo. The README assumes that you have this repo in the same directory as the main grpc repo.
 
 The simplest way to start is to use the generator python script. This does a lot of the metawork associated with getting the generated client running.
 
