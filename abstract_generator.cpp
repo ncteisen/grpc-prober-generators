@@ -34,6 +34,7 @@
 #include "abstract_generator.h"
 
 #include <set>
+#include <algorithm>
 
 // Static helper
 static bool StripSuffix(grpc::string *filename, const grpc::string &suffix) {
