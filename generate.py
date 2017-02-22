@@ -42,64 +42,32 @@ import itertools
 import subprocess
 import shutil
 
-# C++ specific makefile
-_MAKEFILE_TEMPLATE = """HOST_SYSTEM = $(shell uname | cut -f 1 -d_)
-SYSTEM ?= $(HOST_SYSTEM)
-CXX = g++
-CPPFLAGS += -I/usr/local/include -pthread
-CXXFLAGS += -std=c++11
-ifeq ($(SYSTEM),Darwin)
-LDFLAGS += -L/usr/local/lib `pkg-config --libs grpc++ grpc`       \\
-					 -lgrpc++_reflection                                    \\
-					 -lprotobuf -lpthread -ldl -lgflags
-else
-LDFLAGS += -L/usr/local/lib `pkg-config --libs grpc++ grpc`       \\
-					 -Wl,--no-as-needed -lgrpc++_reflection -Wl,--as-needed \\
-					 -lprotobuf -lpthread -ldl -lgflags
-endif
-
-PROTOC = protoc
-GRPC_CPP_PLUGIN = grpc_cpp_plugin
-GRPC_CPP_PLUGIN_PATH ?= `which $(GRPC_CPP_PLUGIN)`
-
-all: generated_client
-
-generated_client: {uniquename}.pb.o {uniquename}.grpc.pb.o {uniquename}.grpc.client.pb.o
-	$(CXX) $^ $(LDFLAGS) -o $@
-
-.PRECIOUS: %.grpc.client.pb.cc
-%.grpc.client.pb.cc: %.proto
-	$(PROTOC) -I . --grpc_out=. --plugin=protoc-gen-grpc=../grpc_cpp_client_generator $<
-
-.PRECIOUS: %.grpc.pb.cc
-%.grpc.pb.cc: %.proto
-	$(PROTOC) -I . --grpc_out=. --plugin=protoc-gen-grpc=$(GRPC_CPP_PLUGIN_PATH) $<
-
-.PRECIOUS: %.pb.cc
-%.pb.cc: %.proto
-	$(PROTOC) -I . --cpp_out=. $<
-
-clean:
-	rm -f *.o *.pb.cc *.pb.h generated_client
-"""
-
 # ensure we run from the root dir of the repo
 ROOT = os.path.abspath(os.path.dirname(sys.argv[0]))
 os.chdir(ROOT)
+GENERATED_DIR = os.path.join(ROOT, "generated_probers")
 
 class CXXLanguage:
   def name(self):
     return "cpp"
   def create_makefile(self, uniquename):
-    makefile = open("Makefile", "w")
-    makefile.write(_MAKEFILE_TEMPLATE.format(uniquename=uniquename))
+    makefile = open("BUILD", "w")
+    template = open("../../template/BUILD.cpp.template", "r").read()
+    makefile.write(template.format(uniquename=uniquename))
     makefile.close()
   def do_prework(self, uniquename):
     print("c++ pre work")
     self.create_makefile(uniquename)
+    cmd = ["protoc", "-I", ".", "--cpp_out=.", uniquename + ".proto"]
+    proc = subprocess.Popen(args=cmd)
+    proc.wait()
+    cmd = ["protoc", "-I", ".", "--grpc_out=.", "--plugin=protoc-gen-grpc=/usr/local/bin/grpc_cpp_plugin", uniquename + ".proto"]
+    proc = subprocess.Popen(args=cmd)
+    proc.wait()
   def generate_client(self, uniquename):
     print("c++ main work")
-    proc = subprocess.Popen(args="make")
+    cmd = ["protoc", "-I", ".", "--grpc_out=.", "--plugin=protoc-gen-grpc=../../bazel-bin/cpp_generator", uniquename + ".proto"]
+    proc = subprocess.Popen(args=cmd)
     proc.wait()
 
 class GoLanguage:
@@ -126,7 +94,7 @@ class GoLanguage:
   def generate_client(self, uniquename):
     print("go main work")
     cmd = ["protoc", "-I", ".", "--grpc_out=.", 
-        "--plugin=protoc-gen-grpc=../grpc_go_client_generator", 
+        "--plugin=protoc-gen-grpc=../../bazel-bin/go_generator", 
         uniquename + ".proto"]
     proc = subprocess.Popen(args=cmd)
     proc.wait()
@@ -163,13 +131,14 @@ languages = set(_LANGUAGES[l]
 
 
 # make the generators
-proc = subprocess.Popen(args="make")
+proc = subprocess.Popen(args=["bazel", "build", ":all"])
 proc.wait()
 
 # generate the directories for each language
 for lang in languages:
   os.chdir(ROOT) # back to root
-  abspath = os.path.abspath(args.proto)
+  abspath = os.path.realpath(args.proto)
+  os.chdir(GENERATED_DIR)
   uniquename = abspath.split("/")[-1][:-6]
   dirname = uniquename + "_" + lang.name()
   if os.path.exists(dirname):

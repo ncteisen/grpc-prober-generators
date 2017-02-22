@@ -1,0 +1,23 @@
+cc_library(
+  name = "{uniquename}_pb",
+  srcs = ["{uniquename}.pb.cc"],
+  hdrs = ["{uniquename}.pb.h"],
+)
+
+cc_library(
+  name = "{uniquename}_pb_grpc",
+  srcs = ["{uniquename}.grpc.pb.cc"],
+  hdrs = ["{uniquename}.grpc.pb.h"],
+  deps = [":{uniquename}_pb"],
+)
+
+cc_binary(
+    name = "generate_{uniquename}_prober",
+    srcs = ["{uniquename}.grpc.client.pb.cc"],
+    deps = [":{uniquename}_pb_grpc"],
+    linkopts = [
+      "-lgrpc++",
+      "-lprotobuf",
+      "-lgflags",
+    ]
+)
