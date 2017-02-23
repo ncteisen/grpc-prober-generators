@@ -166,14 +166,32 @@ void AbstractGenerator::PopulateEnum(
   DoPopulateEnum(printer, vars);
 }
 
+static grpc::string to_camel_case(const grpc::string &in)
+{
+  grpc::string out;
+  bool breaker = true;
+  for (int i = 0; i < in.length(); ++i) {
+    if (in[i] == '_') {
+      breaker = true;
+      continue;
+    } else if (breaker) {
+      out.push_back(toupper(in[i]));
+      breaker = false;
+    } else {
+      out.push_back(in[i]);
+    }
+  }
+  return out;
+}
+
 void AbstractGenerator::PrintPopulateField(
   const grpc::protobuf::FieldDescriptor *field, 
   Printer &printer, vars_t &vars) const
 {
   vars["field_name"] = field->name();
   std::string upper_field_name = field->name();
-  upper_field_name[0] = toupper(upper_field_name[0]);
-  vars["upper_field_name"] = upper_field_name;
+  upper_field_name = to_camel_case(upper_field_name);
+  vars["camel_case_field_name"] = upper_field_name;
 
   switch (field->cpp_type()) {
     case grpc::protobuf::FieldDescriptor::CppType::CPPTYPE_INT32:

@@ -146,32 +146,32 @@ class GoGrpcClientGenerator : public AbstractGenerator {
 
   void DoPopulateInteger(Printer &printer, vars_t &vars) const
   {
-    printer.Print(vars, "message.$upper_field_name$ = 0\n");
+    printer.Print(vars, "message.$camel_case_field_name$ = 0\n");
   }
 
   void DoPopulateString(Printer &printer, vars_t &vars) const
   {
-    printer.Print(vars, "message.$upper_field_name$ = \"hello world\"\n");
+    printer.Print(vars, "message.$camel_case_field_name$ = \"hello world\"\n");
   }
 
   void DoPopulateBool(Printer &printer, vars_t &vars) const
   {
-    printer.Print(vars, "message.$upper_field_name$ = true\n");
+    printer.Print(vars, "message.$camel_case_field_name$ = true\n");
   }
 
   void DoPopulateFloat(Printer &printer, vars_t &vars) const
   {
-    printer.Print(vars, "message.$upper_field_name$ = 0\n");
+    printer.Print(vars, "message.$camel_case_field_name$ = 0\n");
   }
 
   void DoPopulateEnum(Printer &printer, vars_t &vars) const
   {
-    printer.Print(vars, "message.$upper_field_name$ = pb.$enum_name$_$upper_enum_type$\n");
+    printer.Print(vars, "message.$camel_case_field_name$ = pb.$enum_name$_$upper_enum_type$\n");
   }
 
   void DoPopulateMessage(Printer &printer, vars_t &vars) const
   {
-    printer.Print(vars, "Populate$message_name$(message.$upper_field_name$)\n");
+    printer.Print(vars, "Populate$message_name$(message.$camel_case_field_name$)\n");
   }
 
   void DoUnaryUnary(Printer &printer, vars_t &vars) const
