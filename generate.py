@@ -42,11 +42,6 @@ import itertools
 import subprocess
 import shutil
 
-# ensure we run from the root dir of the repo
-ROOT = os.path.abspath(os.path.dirname(sys.argv[0]))
-os.chdir(ROOT)
-GENERATED_DIR = os.path.join(ROOT, "generated_probers")
-
 def run_and_wait(cmd):
   proc = subprocess.Popen(args=cmd)
   proc.wait()
@@ -123,8 +118,21 @@ argp.add_argument('-l', '--language',
 argp.add_argument('-p', '--proto',
                   required=True,
                   help='proto file from which to generate')
+argp.add_argument('-d', '--directory',
+                  default="generated_probers",
+                  help='directory to place generated files')
+argp.add_argument('--no-rebuild', dest='rebuild',
+                  action='store_false')
+argp.set_defaults(rebuild=True)
 
 args = argp.parse_args()
+
+# ensure we run from the root dir of the repo
+ROOT = os.path.abspath(os.path.dirname(sys.argv[0]))
+os.chdir(ROOT)
+if not os.path.exists(args.directory):
+  os.mkdir(args.directory)
+GENERATED_DIR = os.path.join(ROOT, args.directory)
 
 # validate the proto arg
 if not args.proto.endswith(".proto"):
@@ -141,7 +149,8 @@ languages = set(_LANGUAGES[l]
 
 
 # make the generators
-run_and_wait(["bazel", "build", ":all"])
+if args.rebuild:
+  run_and_wait(["bazel", "build", ":all"])
 
 # generate the directories for each language
 for lang in languages:
