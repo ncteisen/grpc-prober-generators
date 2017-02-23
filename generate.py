@@ -51,6 +51,14 @@ def run_and_wait(cmd):
   proc = subprocess.Popen(args=cmd)
   proc.wait()
 
+def check_path(binary):
+  with open(os.devnull, "w") as devnull:
+    proc = subprocess.Popen(args=["which", binary], stdout=devnull)
+    ret = proc.wait()
+    if ret:
+      print("ensure that " + binary + " is in your $PATH")
+      raise SystemExit(1)
+
 class CXXLanguage:
   def name(self):
     return "cpp"
@@ -63,20 +71,26 @@ class CXXLanguage:
     print("c++ pre work")
     self.create_makefile(uniquename)
     run_and_wait(["protoc", "-I", ".", "--cpp_out=.", uniquename + ".proto"])
-    run_and_wait(["protoc", "-I", ".", "--grpc_out=.", "--plugin=protoc-gen-grpc=/usr/local/bin/grpc_cpp_plugin", uniquename + ".proto"])
+    run_and_wait(["protoc", "-I", ".", "--grpc_out=.", 
+        "--plugin=protoc-gen-grpc=/usr/local/bin/grpc_cpp_plugin", 
+        uniquename + ".proto"])
   def generate_client(self, uniquename):
     print("c++ main work")
-    run_and_wait(["protoc", "-I", ".", "--grpc_out=.", "--plugin=protoc-gen-grpc=../../bazel-bin/cpp_generator", uniquename + ".proto"])
+    run_and_wait(["protoc", "-I", ".", "--grpc_out=.", 
+        "--plugin=protoc-gen-grpc=../../bazel-bin/cpp_generator", 
+        uniquename + ".proto"])
 
 class GoLanguage:
   def name(self):
     return "go"
+  def check_path(self):
+      check_path("go")
+      check_path("protoc-gen-go")      
   def ensure_gogendir_exists(self):
     dirpath = os.path.expandvars("$GOPATH/src/generated_pb_files")
     if not os.path.exists(dirpath):
       os.makedirs(dirpath)
   def generate_pb_files(self, uniquename):
-    # TODO(ncteisen) check for GOPATH bin stuff
     run_and_wait(["protoc", "-I", ".", "--go_out=plugins=grpc:.", uniquename + ".proto"])
     dirpath = os.path.expandvars("$GOPATH/src/generated_pb_files/" + uniquename)
     if os.path.exists(dirpath):
@@ -85,6 +99,7 @@ class GoLanguage:
     shutil.move(uniquename + ".pb.go", dirpath + "/" + uniquename + ".pb.go")
   def do_prework(self, uniquename):
     print("go pre work")
+    self.check_path()
     self.ensure_gogendir_exists()
     self.generate_pb_files(uniquename)
   def generate_client(self, uniquename):
@@ -116,7 +131,8 @@ if not args.proto.endswith(".proto"):
   print("proto file needs to be .proto")
   raise SystemExit(1)
 
-#TODO(ncteisen): check for protoc
+check_path("protoc")
+check_path("bazel")
 
 languages = set(_LANGUAGES[l]
                 for l in itertools.chain.from_iterable(
