@@ -12,19 +12,19 @@ be programatically populated with random sentinel data. These clients are meant 
 
 ## How to use
 
-To see an example of the generator working, we will use the cpp helloworld example that can be found under examples/cpp/helloworld of the main gRPC repo. The README assumes that you have this repo in the same directory as the main grpc repo.
+To see an example of the generator working, we will use the file `protos/helloworld.proto`
 
 The simplest way to start is to use the generator python script. This does a lot of the metawork associated with getting the generated client running.
 
 ```
-python generate.py --proto ../grpc/examples/protos/helloworld --language c++ go
+python generate.py --proto protos/helloworld --language c++ go
 ```
 
-This will create two new directories, helloworld_cpp and helloworld_go. Each of these directories will contain the generated clients. To invoke each client:
+This will create two new directories, `generated_probers/helloworld_cpp` and `generated_probers/helloworld_go`. Each of these directories will contain the generated clients. To invoke each client:
 
 ```
-./helloworld_cpp/generated_client --server_port 8080
-./helloworld_go/helloworld.grpc.client.pb.go --server_port 8080
+bazel run generated_probers/helloworld_cpp:generated_helloworld_client --server_port 50051
+go run generated_probers/helloworld_go/helloworld.grpc.client.pb.go --server_port 50051
 ```
 
 ## Design
