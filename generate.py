@@ -47,6 +47,10 @@ ROOT = os.path.abspath(os.path.dirname(sys.argv[0]))
 os.chdir(ROOT)
 GENERATED_DIR = os.path.join(ROOT, "generated_probers")
 
+def run_and_wait(cmd):
+  proc = subprocess.Popen(args=cmd)
+  proc.wait()
+
 class CXXLanguage:
   def name(self):
     return "cpp"
@@ -58,17 +62,11 @@ class CXXLanguage:
   def do_prework(self, uniquename):
     print("c++ pre work")
     self.create_makefile(uniquename)
-    cmd = ["protoc", "-I", ".", "--cpp_out=.", uniquename + ".proto"]
-    proc = subprocess.Popen(args=cmd)
-    proc.wait()
-    cmd = ["protoc", "-I", ".", "--grpc_out=.", "--plugin=protoc-gen-grpc=/usr/local/bin/grpc_cpp_plugin", uniquename + ".proto"]
-    proc = subprocess.Popen(args=cmd)
-    proc.wait()
+    run_and_wait(["protoc", "-I", ".", "--cpp_out=.", uniquename + ".proto"])
+    run_and_wait(["protoc", "-I", ".", "--grpc_out=.", "--plugin=protoc-gen-grpc=/usr/local/bin/grpc_cpp_plugin", uniquename + ".proto"])
   def generate_client(self, uniquename):
     print("c++ main work")
-    cmd = ["protoc", "-I", ".", "--grpc_out=.", "--plugin=protoc-gen-grpc=../../bazel-bin/cpp_generator", uniquename + ".proto"]
-    proc = subprocess.Popen(args=cmd)
-    proc.wait()
+    run_and_wait(["protoc", "-I", ".", "--grpc_out=.", "--plugin=protoc-gen-grpc=../../bazel-bin/cpp_generator", uniquename + ".proto"])
 
 class GoLanguage:
   def name(self):
@@ -79,9 +77,7 @@ class GoLanguage:
       os.makedirs(dirpath)
   def generate_pb_files(self, uniquename):
     # TODO(ncteisen) check for GOPATH bin stuff
-    cmd = ["protoc", "-I", ".", "--go_out=plugins=grpc:.", uniquename + ".proto"]
-    proc = subprocess.Popen(args=cmd)
-    proc.wait()
+    run_and_wait(["protoc", "-I", ".", "--go_out=plugins=grpc:.", uniquename + ".proto"])
     dirpath = os.path.expandvars("$GOPATH/src/generated_pb_files/" + uniquename)
     if os.path.exists(dirpath):
       shutil.rmtree(dirpath)
@@ -93,11 +89,9 @@ class GoLanguage:
     self.generate_pb_files(uniquename)
   def generate_client(self, uniquename):
     print("go main work")
-    cmd = ["protoc", "-I", ".", "--grpc_out=.", 
+    run_and_wait(["protoc", "-I", ".", "--grpc_out=.", 
         "--plugin=protoc-gen-grpc=../../bazel-bin/go_generator", 
-        uniquename + ".proto"]
-    proc = subprocess.Popen(args=cmd)
-    proc.wait()
+        uniquename + ".proto"])
 
 _LANGUAGES = {
     'c++' : CXXLanguage(),
@@ -131,8 +125,7 @@ languages = set(_LANGUAGES[l]
 
 
 # make the generators
-proc = subprocess.Popen(args=["bazel", "build", ":all"])
-proc.wait()
+run_and_wait(["bazel", "build", ":all"])
 
 # generate the directories for each language
 for lang in languages:

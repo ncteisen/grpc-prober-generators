@@ -73,8 +73,9 @@ class CppGrpcClientGenerator : public AbstractGenerator {
       printer.Print(vars, "#include <$header$>\n");
     }
 
-    printer.Print(
-      vars, "\n#include \"$proto_filename_without_ext$.grpc.pb.h\"\n\n");
+    printer.Print(vars,
+            "\n#include \"$proto_filename_without_ext$.grpc.pb.h\"\n"
+            "\n#include \"../../util/create_prober_channel.h\"\n\n");
   }
 
   void DoPrintFlags(Printer &printer, vars_t &vars) const
@@ -90,8 +91,8 @@ class CppGrpcClientGenerator : public AbstractGenerator {
 
     // print the flag definitions
     printer.Print("DEFINE_bool(use_tls, false, \"Connection uses TLS if true, else plain TCP.\");\n"
-        "DEFINE_string(custom_ca_file, \"\", "
-            "\"The file containning the CA root cert file.\");\n"
+        "DEFINE_bool(use_test_ca, false, "
+            "\"Client will use custom ca file.\");\n"
         "DEFINE_int32(server_port, 8080, \"Server port.\");\n"
         "DEFINE_string(server_host, \"localhost\", "
             "\"Server host to connect to\");\n"
@@ -101,12 +102,10 @@ class CppGrpcClientGenerator : public AbstractGenerator {
 
   void DoCreateChannel(Printer &printer) const
   {
-    printer.Print("const int host_port_buf_size = 1024;\n"
-                   "char host_port[host_port_buf_size];\n"
-                   "snprintf(host_port, host_port_buf_size, \"%s:%d\", "
-                   "FLAGS_server_host.c_str(), FLAGS_server_port);\n"
-                   "std::shared_ptr<grpc::Channel> channel = \n"
-                   "\t\tgrpc::CreateChannel(host_port, grpc::InsecureChannelCredentials());\n\n");
+    printer.Print(
+      "std::shared_ptr<grpc::Channel> channel = grpc::CreateProberChannel(\n"
+      "\t\tFLAGS_server_host, FLAGS_server_port, FLAGS_server_host_override,\n"
+      "\t\tFLAGS_use_tls, FLAGS_use_test_ca);\n\n");
   }
 
   void DoParseFlags(Printer &printer) const

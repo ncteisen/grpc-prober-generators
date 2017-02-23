@@ -31,8 +31,8 @@
  *
  */
 
-#ifndef GRPC_TEST_CPP_UTIL_TEST_CREDENTIALS_PROVIDER_H
-#define GRPC_TEST_CPP_UTIL_TEST_CREDENTIALS_PROVIDER_H
+#ifndef UTIL_TEST_CREDENTIALS_PROVIDER_H
+#define UTIL_TEST_CREDENTIALS_PROVIDER_H
 
 #include <memory>
 
@@ -96,4 +96,4 @@ void SetCredentialsProvider(CredentialsProvider* provider);
 }  // namespace testing
 }  // namespace grpc
 
-#endif  // GRPC_TEST_CPP_UTIL_TEST_CREDENTIALS_PROVIDER_H
+#endif  // UTIL_TEST_CREDENTIALS_PROVIDER_H

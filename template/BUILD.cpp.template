@@ -12,9 +12,12 @@ cc_library(
 )
 
 cc_binary(
-    name = "generate_{uniquename}_prober",
+    name = "generated_{uniquename}_prober",
     srcs = ["{uniquename}.grpc.client.pb.cc"],
-    deps = [":{uniquename}_pb_grpc"],
+    deps = [
+      ":{uniquename}_pb_grpc",
+      "//util:create_prober_channel"
+    ],
     linkopts = [
       "-lgrpc++",
       "-lprotobuf",

@@ -1,6 +1,6 @@
 /*
  *
- * Copyright 2015, Google Inc.
+ * Copyright 2015-2016, Google Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,23 +31,24 @@
  *
  */
 
-#ifndef UTIL_SSL_TEST_DATA_H
-#define UTIL_SSL_TEST_DATA_H
+#include "create_prober_channel.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <grpc++/create_channel.h>
 
-extern const char test_root_cert[];
-extern const char test_server1_cert[];
-extern const char test_server1_key[];
-extern const char test_self_signed_client_cert[];
-extern const char test_self_signed_client_key[];
-extern const char test_signed_client_cert[];
-extern const char test_signed_client_key[];
+#include "create_test_channel.h"
 
-#ifdef __cplusplus
+namespace grpc {
+
+std::shared_ptr<Channel> CreateProberChannel(
+    const grpc::string& server, const int32_t port, 
+    const grpc::string& override_hostname, bool enable_ssl, bool use_test_ca)
+{
+  const int host_port_buf_size = 1024;
+  char host_port[host_port_buf_size];
+  snprintf(host_port, host_port_buf_size, "%s:%d", server.c_str(), port);
+  std::shared_ptr<CallCredentials> creds;
+  return CreateTestChannel(host_port, override_hostname,
+                             enable_ssl, !use_test_ca, creds);
 }
-#endif
 
-#endif /* UTIL_SSL_TEST_DATA_H */
+}  // namespace grpc
