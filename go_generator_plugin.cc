@@ -100,7 +100,7 @@ class GoGrpcClientGenerator : public AbstractGenerator {
         "\"fmt\"\n"
         "\"strconv\"\n\n"
         "\"golang.org/x/net/context\"\n"
-        "\"google.golang.org/grpc/grpclog\"\n"
+        "\"github.com/golang/glog\"\n"
         "\"google.golang.org/grpc\"\n\n");
     printer.Print(
         vars, "pb \"generated_pb_files/$proto_filename_without_ext$\"\n");
@@ -142,7 +142,7 @@ class GoGrpcClientGenerator : public AbstractGenerator {
     printer.Print("serverAddr := net.JoinHostPort(*serverHost, strconv.Itoa(*serverPort))\n");
     printer.Print("channel, err := grpc.Dial(serverAddr, grpc.WithInsecure())\n"
         "if err != nil {\n"
-        "\tgrpclog.Fatalf(\"did not connect: %v\", err)\n"
+        "\tglog.Fatalf(\"did not connect: %v\", err)\n"
         "}\n"
         "defer channel.Close()\n\n");
   }
@@ -220,7 +220,7 @@ class GoGrpcClientGenerator : public AbstractGenerator {
     printer.Print(vars, "_, err := stub.$method_name$(context.Background(), request)\n\n");
     printer.Print("if err != nil {\n");
     printer.Indent();
-    printer.Print("grpclog.Fatalf(\"Error occurred: %v\", err)\n");
+    printer.Print("glog.Fatalf(\"Error occurred: %v\", err)\n");
     printer.Outdent();
     printer.Print("}\n");
   }

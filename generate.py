@@ -81,21 +81,11 @@ class GoLanguage:
   def check_path(self):
       check_path("go")
       check_path("protoc-gen-go")      
-  def ensure_gogendir_exists(self):
-    dirpath = os.path.expandvars("$GOPATH/src/generated_pb_files")
-    if not os.path.exists(dirpath):
-      os.makedirs(dirpath)
   def generate_pb_files(self, uniquename):
     run_and_wait(["protoc", "-I", ".", "--go_out=plugins=grpc:.", uniquename + ".proto"])
-    dirpath = os.path.expandvars("$GOPATH/src/generated_pb_files/" + uniquename)
-    if os.path.exists(dirpath):
-      shutil.rmtree(dirpath)
-    os.mkdir(dirpath)
-    shutil.move(uniquename + ".pb.go", dirpath + "/" + uniquename + ".pb.go")
   def do_prework(self, uniquename):
     print("go pre work")
     self.check_path()
-    self.ensure_gogendir_exists()
     self.generate_pb_files(uniquename)
   def generate_client(self, uniquename):
     print("go main work")
@@ -150,7 +140,11 @@ languages = set(_LANGUAGES[l]
 
 # make the generators
 if args.rebuild:
-  run_and_wait(["bazel", "build", ":all"])
+  if 'all' in args.language:
+    run_and_wait(["bazel", "build", ":all"])
+  else:
+    for lang in languages:
+      run_and_wait(["bazel", "build", ":" + lang.name() + "_generator"])
 
 # generate the directories for each language
 for lang in languages:
