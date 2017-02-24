@@ -34,8 +34,27 @@
 #include <memory>
 #include <sstream>
 #include <cstdlib>
+#include <map>
 
 #include "abstract_generator.h"
+
+static std::map<grpc::protobuf::FieldDescriptor::Type, grpc::string> sentinel_data {
+    {grpc::protobuf::FieldDescriptor::TYPE_DOUBLE, "1.234"},
+    {grpc::protobuf::FieldDescriptor::TYPE_FLOAT, "1.234"},
+    {grpc::protobuf::FieldDescriptor::TYPE_INT64, "1234"},
+    {grpc::protobuf::FieldDescriptor::TYPE_UINT64, "1234"},
+    {grpc::protobuf::FieldDescriptor::TYPE_INT32, "123"},
+    {grpc::protobuf::FieldDescriptor::TYPE_FIXED64, "1234"},
+    {grpc::protobuf::FieldDescriptor::TYPE_FIXED32, "123"},
+    {grpc::protobuf::FieldDescriptor::TYPE_BOOL, "true"},
+    {grpc::protobuf::FieldDescriptor::TYPE_STRING, "\"Hello world\""},
+    {grpc::protobuf::FieldDescriptor::TYPE_BYTES, "\"Hello world\""},
+    {grpc::protobuf::FieldDescriptor::TYPE_UINT32, "123"},
+    {grpc::protobuf::FieldDescriptor::TYPE_SFIXED32, "123"},
+    {grpc::protobuf::FieldDescriptor::TYPE_SFIXED64, "1234"},
+    {grpc::protobuf::FieldDescriptor::TYPE_SINT32, "123"},
+    {grpc::protobuf::FieldDescriptor::TYPE_SINT64, "1234"},
+};
 
 class CppGrpcClientGenerator : public AbstractGenerator {
  private:
@@ -126,8 +145,8 @@ class CppGrpcClientGenerator : public AbstractGenerator {
   void DoPrintMessagePopulatingFunctionDecl(
       Printer &printer, vars_t &vars) const
   {
-    printer.Print(
-        vars, "void Populate$message_name$($message_type$ *message);\n");
+    // printer.Print(
+    //     vars, "void Populate$message_name$($message_type$ *message);\n");
   }
 
   void DoPrintMessagePopulatingFunctionStart(
@@ -137,6 +156,12 @@ class CppGrpcClientGenerator : public AbstractGenerator {
         vars, "void Populate$message_name$($message_type$ *message) {\n");
     printer.Indent();
   }
+
+  void DoPrintMessagePopulatingFunctionEnd(Printer &printer) const
+  {
+    DoEndFunction(printer);
+  }
+
 
   void DoPrintMethodProbeStart(Printer &printer, vars_t &vars) const
   {
@@ -158,34 +183,37 @@ class CppGrpcClientGenerator : public AbstractGenerator {
                         "\t\t$full_service_name$::NewStub(channel);\n");
   }
 
-  void DoPopulateInteger(Printer &printer, vars_t &vars) const
+  void DoPopulateField(Printer &printer, vars_t &vars, 
+      grpc::protobuf::FieldDescriptor::Type type, bool repeated) const
   {
-    printer.Print(vars, "message->set_$field_name$(0);\n");
+    vars["data"] = sentinel_data[type];
+    if (repeated) {
+      printer.Print(vars, "message->add_$field_name$($data$);\n");
+      printer.Print(vars, "message->add_$field_name$($data$);\n");
+    } else {
+      printer.Print(vars, "message->set_$field_name$($data$);\n");
+    }
   }
 
-  void DoPopulateString(Printer &printer, vars_t &vars) const
+  void DoPopulateEnum(Printer &printer, vars_t &vars, bool repeated) const
   {
-    printer.Print(vars, "message->set_$field_name$(\"hello world\");\n");
+    if (repeated) {
+      printer.Print(vars, "message->add_$field_name$($enum_type$);\n");
+      printer.Print(vars, "message->add_$field_name$($enum_type$);\n");
+    } else {
+      printer.Print(vars, "message->set_$field_name$($enum_type$);\n");
+    }
   }
 
-  void DoPopulateBool(Printer &printer, vars_t &vars) const
+  void DoPopulateMessage(Printer &printer, vars_t &vars, bool repeated) const
   {
-    printer.Print(vars, "message->set_$field_name$(true);\n");
-  }
-
-  void DoPopulateFloat(Printer &printer, vars_t &vars) const
-  {
-    printer.Print(vars, "message->set_$field_name$(5.5);\n");
-  }
-
-  void DoPopulateEnum(Printer &printer, vars_t &vars) const
-  {
-    printer.Print(vars, "message->set_$field_name$($enum_type$);\n");
-  }
-
-  void DoPopulateMessage(Printer &printer, vars_t &vars) const
-  {
-    printer.Print(vars, "Populate$message_name$(message->mutable_$field_name$());\n");
+    vars["mutable_or_add"] = repeated ? "add" : "mutable";
+    if (repeated) {
+      printer.Print(vars, "Populate$message_name$(message->add_$field_name$());\n");
+      printer.Print(vars, "Populate$message_name$(message->add_$field_name$());\n");
+    } else {
+      printer.Print(vars, "Populate$message_name$(message->mutable_$field_name$());\n");
+    }
   }
 
   void DoUnaryUnary(Printer &printer, vars_t &vars) const
@@ -209,7 +237,6 @@ class CppGrpcClientGenerator : public AbstractGenerator {
     printer.Outdent();
     printer.Print("}\n");
   }
-
 };
 
 

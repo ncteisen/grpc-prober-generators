@@ -103,7 +103,6 @@ class AbstractGenerator : public grpc::protobuf::compiler::CodeGenerator {
   // Returns the name of the proto file, stripped of .proto
   grpc::string GetProtoName() const;
 
-
   // prints a function responsible for populating and returning
   // the particular message type.
   void PrintMessagePopulatingFunction(
@@ -111,11 +110,6 @@ class AbstractGenerator : public grpc::protobuf::compiler::CodeGenerator {
 
   // prints a function that prints all items in a particular message.
   void PrintMessagePrintingFunction(
-    const grpc::protobuf::Descriptor *message, Printer &printer) const;
-
-  void PrintMessagePopulatingFunctionDecl(
-    const grpc::protobuf::Descriptor *message, Printer &printer) const;
-  void PrintMessagePrintingFunctionDecl(
     const grpc::protobuf::Descriptor *message, Printer &printer) const;
 
   // Generates the function that probes a particular service by calling
@@ -142,7 +136,7 @@ class AbstractGenerator : public grpc::protobuf::compiler::CodeGenerator {
     Printer &printer, vars_t vars) const;
   void PopulateEnum(
     const google::protobuf::EnumDescriptor *enum_, 
-    Printer &printer, vars_t vars) const;
+    Printer &printer, vars_t vars, bool repeated) const;
 
   // Generates the function that probes a particular method.
   void PrintMethodProbeFunction(
@@ -174,12 +168,11 @@ class AbstractGenerator : public grpc::protobuf::compiler::CodeGenerator {
   virtual void DoStartPrint(Printer &printer) const = 0;
   virtual void DoEndPrint(Printer &printer) const = 0;
 
+  virtual void DoPrintMessagePopulatingFunctionEnd(Printer &printer) const = 0;
+
   virtual void DoPrintPackage(Printer &printer, vars_t &vars) const = 0;
   virtual void DoPrintIncludes(Printer &printer, vars_t &vars) const = 0;
   virtual void DoPrintFlags(Printer &printer, vars_t &vars) const = 0;
-
-  virtual void DoPrintMessagePopulatingFunctionDecl(
-    Printer &printer, vars_t &vars) const = 0;
 
   virtual void DoPrintMessagePopulatingFunctionStart(
     Printer &printer, vars_t &vars) const = 0;
@@ -188,12 +181,14 @@ class AbstractGenerator : public grpc::protobuf::compiler::CodeGenerator {
   virtual void DoPrintMethodProbeStart(
     Printer &printer, vars_t &vars) const = 0;
 
-  virtual void DoPopulateInteger(Printer &printer, vars_t &vars) const = 0;
-  virtual void DoPopulateString(Printer &printer, vars_t &vars) const = 0;
-  virtual void DoPopulateBool(Printer &printer, vars_t &vars) const = 0;
-  virtual void DoPopulateFloat(Printer &printer, vars_t &vars) const = 0;
-  virtual void DoPopulateMessage(Printer &printer, vars_t &vars) const = 0;
-  virtual void DoPopulateEnum(Printer &printer, vars_t &vars) const = 0;
+
+
+  virtual void DoPopulateField(Printer &printer, vars_t &vars, 
+      grpc::protobuf::FieldDescriptor::Type type, bool repeated) const = 0;
+  virtual void DoPopulateMessage(Printer &printer, vars_t &vars, 
+      bool repeated) const = 0;
+  virtual void DoPopulateEnum(Printer &printer, vars_t &vars, 
+      bool repeated) const = 0;
 
   virtual void DoCreateStub(Printer &printer, vars_t &vars) const = 0;
   virtual void DoUnaryUnary(Printer &printer, vars_t &vars) const = 0;

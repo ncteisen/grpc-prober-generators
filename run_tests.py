@@ -73,7 +73,7 @@ _LANGUAGES = {
 
 argp = argparse.ArgumentParser(description='Generate a probing client')
 argp.add_argument('-l', '--language',
-                  choices=['all', "go", "c++"],
+                  choices=['all'] + sorted(_LANGUAGES),
                   nargs='+',
                   default=['all'],
                   help='Clients languages to generate.')
@@ -89,7 +89,11 @@ languages = set(_LANGUAGES[l]
 ROOT = os.path.abspath(os.path.dirname(sys.argv[0]))
 os.chdir(ROOT)
 
-run_and_wait(["bazel", "build", ":all"])
+if 'all' in args.language:
+  run_and_wait(["bazel", "build", ":all"])
+else:
+  for lang in languages:
+    run_and_wait(["bazel", "build", ":" + lang.name() + "_generator"])
 
 for filename in os.listdir('protos'):
   os.chdir(ROOT)

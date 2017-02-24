@@ -1,1 +1,1 @@
-This is the landing point for all generated probers.
+This is the default landing point for all generated probers.

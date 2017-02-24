@@ -134,26 +134,9 @@ static void RecursivlyTrackMessages(
   }
 }
 
-void AbstractGenerator::PrintMessagePopulatingFunctionDecl(
-    const grpc::protobuf::Descriptor *message, Printer &printer) const
-{
-  vars_t vars;
-  vars["message_type"] = ClassName(message);
-  vars["message_name"] = message->name();
-  DoPrintMessagePopulatingFunctionDecl(printer, vars);
-}
-
-void AbstractGenerator::DeclareAndPopulateField(
-  const grpc::protobuf::Descriptor *message, 
-  Printer &printer, vars_t vars) const
-{
-  vars["message_name"] = message->name();
-  DoPopulateMessage(printer, vars);
-}
-
 void AbstractGenerator::PopulateEnum(
   const google::protobuf::EnumDescriptor* enum_,
-  Printer &printer, vars_t vars) const
+  Printer &printer, vars_t vars, bool repeated) const
 {
   const google::protobuf::EnumValueDescriptor* val = 
       enum_->FindValueByNumber(0); // grabs first val of enum
@@ -163,7 +146,7 @@ void AbstractGenerator::PopulateEnum(
       enum_type_upper.begin(), enum_type_upper.end(), enum_type_upper.begin(), toupper);
   vars["upper_enum_type"] = enum_type_upper;
   vars["enum_name"] = enum_->name();
-  DoPopulateEnum(printer, vars);
+  DoPopulateEnum(printer, vars, repeated);
 }
 
 static grpc::string to_camel_case(const grpc::string &in)
@@ -192,32 +175,16 @@ void AbstractGenerator::PrintPopulateField(
   std::string upper_field_name = field->name();
   upper_field_name = to_camel_case(upper_field_name);
   vars["camel_case_field_name"] = upper_field_name;
+  bool repeated = field->is_repeated();
 
-  switch (field->cpp_type()) {
-    case grpc::protobuf::FieldDescriptor::CppType::CPPTYPE_INT32:
-    case grpc::protobuf::FieldDescriptor::CppType::CPPTYPE_INT64:
-    case grpc::protobuf::FieldDescriptor::CppType::CPPTYPE_UINT32:
-    case grpc::protobuf::FieldDescriptor::CppType::CPPTYPE_UINT64:
-      DoPopulateInteger(printer, vars);
-      break;
-    case grpc::protobuf::FieldDescriptor::CppType::CPPTYPE_DOUBLE:
-    case grpc::protobuf::FieldDescriptor::CppType::CPPTYPE_FLOAT:
-      DoPopulateFloat(printer, vars);
-      break;
-    case grpc::protobuf::FieldDescriptor::CppType::CPPTYPE_BOOL:
-      DoPopulateBool(printer, vars);
-      break;
-    case grpc::protobuf::FieldDescriptor::CppType::CPPTYPE_ENUM:
-      PopulateEnum(field->enum_type(), printer, vars);
-      break;
-    case grpc::protobuf::FieldDescriptor::CppType::CPPTYPE_STRING:
-      DoPopulateString(printer, vars);
-      break;
-    case grpc::protobuf::FieldDescriptor::CppType::CPPTYPE_MESSAGE:
-      DeclareAndPopulateField(field->message_type(), printer, vars);
-      break;
-    default:
-      break;
+  if (field->type() == grpc::protobuf::FieldDescriptor::Type::TYPE_MESSAGE ||
+      field->type() == grpc::protobuf::FieldDescriptor::Type::TYPE_GROUP) {
+    vars["message_name"] = field->message_type()->name();
+    DoPopulateMessage(printer, vars, repeated);
+  } else if (field->type() == grpc::protobuf::FieldDescriptor::Type::TYPE_ENUM) {
+    PopulateEnum(field->enum_type(), printer, vars, repeated);
+  } else {
+    DoPopulateField(printer, vars, field->type(), repeated);
   }
 }
 
@@ -233,7 +200,7 @@ void AbstractGenerator::PrintMessagePopulatingFunction(
     PrintPopulateField(message->field(i), printer, vars);
   }
 
-  DoEndFunction(printer);
+  DoPrintMessagePopulatingFunctionEnd(printer);
   printer.NewLine();
 }
 
@@ -254,11 +221,6 @@ grpc::string AbstractGenerator::GenerateMessagePopulationFunctions() const
   grpc::string output;
   {
     Printer printer(&output);
-    for (auto it = input_messages.begin(); 
-        it != input_messages.end(); ++it) {
-      PrintMessagePopulatingFunctionDecl(*it, printer);
-    }
-    printer.NewLine();
     for (auto it = input_messages.begin(); 
         it != input_messages.end(); ++it) {
       PrintMessagePopulatingFunction(*it, printer);

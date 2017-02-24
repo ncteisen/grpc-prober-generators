@@ -42,9 +42,13 @@ service Greeter {
   rpc SayHello (HelloRequest) returns (HelloReply) {}
 }
 
+message Bar {
+  string hi = 1;
+}
+
 // The request message containing the user's name.
 message HelloRequest {
-  string name = 1;
+  repeated Bar name = 1;
 }
 
 // The response message containing the greetings
