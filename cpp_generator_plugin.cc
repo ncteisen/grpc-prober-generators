@@ -94,7 +94,7 @@ class CppGrpcClientGenerator : public AbstractGenerator {
 
     printer.Print(vars,
             "\n#include \"$proto_filename_without_ext$.grpc.pb.h\"\n"
-            "\n#include \"../../util/create_prober_channel.h\"\n\n");
+            "\n#include \"../../util/cpp/create_prober_channel.h\"\n\n");
   }
 
   void DoPrintFlags(Printer &printer, vars_t &vars) const

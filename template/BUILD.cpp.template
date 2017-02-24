@@ -16,7 +16,7 @@ cc_binary(
     srcs = ["{uniquename}.grpc.client.pb.cc"],
     deps = [
       ":{uniquename}_pb_grpc",
-      "//util:create_prober_channel"
+      "//util/cpp:create_prober_channel"
     ],
     linkopts = [
       "-lgrpc++",

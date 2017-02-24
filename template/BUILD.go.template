@@ -4,5 +4,8 @@ load("@org_pubref_rules_protobuf//go:rules.bzl", "GRPC_COMPILE_DEPS")
 go_binary(
   name = "generated_{uniquename}_prober",
   srcs = ["{uniquename}.grpc.client.pb.go"],
-  deps = ["//generated_go_pb_files/{uniquename}:{uniquename}"] + GRPC_COMPILE_DEPS
+  deps = [
+    "//generated_go_pb_files/{uniquename}:{uniquename}",
+    "//util/go:create_prober_channel",
+  ] + GRPC_COMPILE_DEPS
 )

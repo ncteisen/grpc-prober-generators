@@ -59,7 +59,7 @@ class CXXLanguage:
     return "cpp"
   def create_makefile(self, uniquename):
     makefile = open("BUILD", "w")
-    template = open("../../template/BUILD.cpp.template", "r").read()
+    template = open(ROOT + "/template/BUILD.cpp.template", "r").read()
     makefile.write(template.format(uniquename=uniquename))
     makefile.close()
   def do_prework(self, uniquename):
@@ -83,7 +83,7 @@ class GoLanguage:
     check_path("protoc-gen-go") 
   def create_makefile(self, uniquename):
     makefile = open("BUILD", "w")
-    template = open("../../template/BUILD.go.template", "r").read()
+    template = open(ROOT + "/template/BUILD.go.template", "r").read()
     makefile.write(template.format(uniquename=uniquename))
     makefile.close()        
   def generate_pb_files(self, uniquename):
@@ -95,7 +95,7 @@ class GoLanguage:
     os.mkdir(genpath)
     shutil.move(uniquename + ".pb.go", ROOT + "/generated_go_pb_files/" + uniquename + "/" + uniquename + ".pb.go")
     makefile = open("BUILD.pb", "w")
-    template = open("../../template/BUILD.go.pb.template", "r").read()
+    template = open(ROOT + "/template/BUILD.go.pb.template", "r").read()
     makefile.write(template.format(uniquename=uniquename))
     makefile.close()
     shutil.move("BUILD.pb", ROOT + "/generated_go_pb_files/" + uniquename + "/BUILD")

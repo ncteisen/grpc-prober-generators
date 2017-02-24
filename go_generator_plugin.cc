@@ -96,14 +96,13 @@ class GoGrpcClientGenerator : public AbstractGenerator {
     printer.Indent();
     printer.Print(
         "\"flag\"\n"
-        "\"net\"\n"
-        "\"fmt\"\n"
-        "\"strconv\"\n\n"
+        "\"fmt\"\n\n"
         "\"golang.org/x/net/context\"\n"
         "\"github.com/golang/glog\"\n"
         "\"google.golang.org/grpc\"\n\n");
     printer.Print(
         vars, "pb \"github.com/ncteisen/grpc-prober-generators/generated_go_pb_files/$proto_filename_without_ext$/$proto_filename_without_ext$\"\n");
+    printer.Print("util \"github.com/ncteisen/grpc-prober-generators/util/go/create_prober_channel\"\n");
     printer.Outdent();
     printer.Print(")\n\n");
   }
@@ -113,8 +112,8 @@ class GoGrpcClientGenerator : public AbstractGenerator {
     printer.Print("var (\n");
     printer.Indent();
     printer.Print(
-      "tls                = flag.Bool(\"use_tls\", false, \"Connection uses TLS if true, else plain TCP.\")\n"
-      "caFile             = flag.String(\"custom_ca_file\", \"testdata/ca.pem\", \"The file containning the CA root cert file.\")\n"
+      "useTLS             = flag.Bool(\"use_tls\", false, \"Connection uses TLS if true, else plain TCP.\")\n"
+      "testCA             = flag.Bool(\"use_test_ca\", false, \"Client will use custom ca file.\")\n"
       "serverHost         = flag.String(\"server_host\", \"127.0.0.1\", \"Server host to connect to.\")\n"
       "serverPort         = flag.Int(\"server_port\", 8080, \"Server port.\")\n"
       "serverHostOverride = flag.String(\"server_host_override\", \"foo.test.google.fr\", \"The server name use to verify the hostname returned by TLS handshake.\")\n");
@@ -139,18 +138,9 @@ class GoGrpcClientGenerator : public AbstractGenerator {
 
   void DoCreateChannel(Printer &printer) const
   {
-    printer.Print("serverAddr := net.JoinHostPort(*serverHost, strconv.Itoa(*serverPort))\n");
-    printer.Print("channel, err := grpc.Dial(serverAddr, grpc.WithInsecure())\n"
-        "if err != nil {\n"
-        "\tglog.Fatalf(\"did not connect: %v\", err)\n"
-        "}\n"
+    printer.Print("channel := util.CreateProberChannel(serverHost, serverPort,"
+        " serverHostOverride, useTLS, testCA)\n"
         "defer channel.Close()\n\n");
-  }
-
-  void DoPrintMessagePopulatingFunctionDecl(
-      Printer &printer, vars_t &vars) const
-  {
-    // no decls needed for go
   }
 
   void DoPrintMethodProbeStart(Printer &printer, vars_t &vars) const
