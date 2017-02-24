@@ -103,7 +103,7 @@ class GoGrpcClientGenerator : public AbstractGenerator {
         "\"github.com/golang/glog\"\n"
         "\"google.golang.org/grpc\"\n\n");
     printer.Print(
-        vars, "pb \"generated_pb_files/$proto_filename_without_ext$\"\n");
+        vars, "pb \"github.com/ncteisen/grpc-prober-generators/generated_go_pb_files/$proto_filename_without_ext$/$proto_filename_without_ext$\"\n");
     printer.Outdent();
     printer.Print(")\n\n");
   }

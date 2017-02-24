@@ -1,0 +1,9 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@org_pubref_rules_protobuf//go:rules.bzl", "GRPC_COMPILE_DEPS")
+
+go_library(
+  name = "{uniquename}",
+  srcs = ["{uniquename}.pb.go"],
+  deps = GRPC_COMPILE_DEPS,
+  visibility = ["//visibility:public"],
+)

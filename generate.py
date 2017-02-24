@@ -79,13 +79,30 @@ class GoLanguage:
   def name(self):
     return "go"
   def check_path(self):
-      check_path("go")
-      check_path("protoc-gen-go")      
+    check_path("go")
+    check_path("protoc-gen-go") 
+  def create_makefile(self, uniquename):
+    makefile = open("BUILD", "w")
+    template = open("../../template/BUILD.go.template", "r").read()
+    makefile.write(template.format(uniquename=uniquename))
+    makefile.close()        
   def generate_pb_files(self, uniquename):
     run_and_wait(["protoc", "-I", ".", "--go_out=plugins=grpc:.", uniquename + ".proto"])
+    run_and_wait(["sed", "-i", "", "/SupportPackageIsVersion4/d", uniquename + ".pb.go"]) # TODO: reevaluate the life choices that led to this line
+    genpath = ROOT + "/generated_go_pb_files/" + uniquename
+    if os.path.exists(genpath):
+      shutil.rmtree(genpath)
+    os.mkdir(genpath)
+    shutil.move(uniquename + ".pb.go", ROOT + "/generated_go_pb_files/" + uniquename + "/" + uniquename + ".pb.go")
+    makefile = open("BUILD.pb", "w")
+    template = open("../../template/BUILD.go.pb.template", "r").read()
+    makefile.write(template.format(uniquename=uniquename))
+    makefile.close()
+    shutil.move("BUILD.pb", ROOT + "/generated_go_pb_files/" + uniquename + "/BUILD")
   def do_prework(self, uniquename):
     print("go pre work")
     self.check_path()
+    self.create_makefile(uniquename)
     self.generate_pb_files(uniquename)
   def generate_client(self, uniquename):
     print("go main work")

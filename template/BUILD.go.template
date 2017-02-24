@@ -1,0 +1,8 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@org_pubref_rules_protobuf//go:rules.bzl", "GRPC_COMPILE_DEPS")
+
+go_binary(
+  name = "generated_{uniquename}_prober",
+  srcs = ["{uniquename}.grpc.client.pb.go"],
+  deps = ["//generated_go_pb_files/{uniquename}:{uniquename}"] + GRPC_COMPILE_DEPS
+)

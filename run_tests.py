@@ -62,7 +62,7 @@ class GoLanguage:
   def name(self):
     return "go"
   def try_build(self, uniquename):
-    run_and_check(["go", "build", uniquename + ".grpc.client.pb.go"])
+    run_and_check(["bazel", "build", ":generated_" + uniquename + "_prober"])
 
 
 _LANGUAGES = {
