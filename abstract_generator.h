@@ -103,6 +103,8 @@ class AbstractGenerator : public grpc::protobuf::compiler::CodeGenerator {
   // Returns the name of the proto file, stripped of .proto
   grpc::string GetProtoName() const;
 
+  grpc::string GenerateTrailer() const;
+
   // prints a function responsible for populating and returning
   // the particular message type.
   void PrintMessagePopulatingFunction(
@@ -163,6 +165,7 @@ class AbstractGenerator : public grpc::protobuf::compiler::CodeGenerator {
   virtual void DoParseFlags(Printer &printer) const = 0;
   // start the main function
   virtual void DoStartMain(Printer &printer) const = 0;
+  virtual void DoTrailer(Printer &printer) const = 0;
   // end any functions
   virtual void DoEndFunction(Printer &printer) const = 0;
   virtual void DoStartPrint(Printer &printer) const = 0;

@@ -46,7 +46,7 @@ static std::map<grpc::protobuf::FieldDescriptor::Type, grpc::string> sentinel_da
     {grpc::protobuf::FieldDescriptor::TYPE_INT32, "123"},
     {grpc::protobuf::FieldDescriptor::TYPE_FIXED64, "1234"},
     {grpc::protobuf::FieldDescriptor::TYPE_FIXED32, "123"},
-    {grpc::protobuf::FieldDescriptor::TYPE_BOOL, "true"},
+    {grpc::protobuf::FieldDescriptor::TYPE_BOOL, "True"},
     {grpc::protobuf::FieldDescriptor::TYPE_STRING, "\"Hello world\""},
     {grpc::protobuf::FieldDescriptor::TYPE_BYTES, "\"Hello world\""},
     {grpc::protobuf::FieldDescriptor::TYPE_UINT32, "123"},
@@ -56,104 +56,64 @@ static std::map<grpc::protobuf::FieldDescriptor::Type, grpc::string> sentinel_da
     {grpc::protobuf::FieldDescriptor::TYPE_SINT64, "1234"},
 };
 
-class CppGrpcClientGenerator : public AbstractGenerator {
+class PythonGrpcClientGenerator : public AbstractGenerator {
  private:
   grpc::string GetLanguageSpecificFileExtension() const 
   { 
-    return ".grpc.client.pb.cc"; 
+    return ".grpc.client.pb.py"; 
   }
 
   grpc::string GetCommentPrefix() const 
   {
-    return "// "; 
+    return "# "; 
   }
 
   void DoPrintPackage(Printer &printer, vars_t &vars) const
   {
-    // nothing to do for c++
+    // nothing to do for Python
   }
 
   void DoPrintIncludes(Printer &printer, vars_t &vars) const
   {
-    // headers
-    std::vector<grpc::string> headers = {
-        "iostream",
-        "memory",
-        "string",
-        "cstdint",
-        "thread",
-        "gflags/gflags.h",
-        "grpc++/grpc++.h",
-        "grpc/support/log.h",
-        "grpc/support/useful.h"};
-    
-    for (auto i = headers.begin(); i != headers.end(); i++) {
-      vars["header"] = *i;
-      printer.Print(vars, "#include <$header$>\n");
-    }
+    printer.Print("from __future__ import print_function\n\n");
 
-    printer.Print(vars,
-            "\n#include \"$proto_filename_without_ext$.grpc.pb.h\"\n"
-            "\n#include \"../../util/cpp/create_prober_channel.h\"\n\n");
+    printer.Print("import grpc\n\n");
+
+    printer.Print(vars,"import $proto_filename_without_ext$_pb2\n"
+                       "import $proto_filename_without_ext$_pb2_grpc\n\n");
   }
 
   void DoPrintFlags(Printer &printer, vars_t &vars) const
   {
-    printer.Print(
-      "// In some distros, gflags is in the namespace "
-      "google, and in some others,\n"
-      "// in gflags. This hack is enabling us to find both.\n"
-      "namespace google {}\n"
-      "namespace gflags {}\n"
-      "using namespace google;\n"
-      "using namespace gflags;\n\n");
-
-    // print the flag definitions
-    printer.Print("DEFINE_bool(use_tls, false, \"Connection uses TLS if true, else plain TCP.\");\n"
-        "DEFINE_bool(use_test_ca, false, "
-            "\"Client will use custom ca file.\");\n"
-        "DEFINE_int32(server_port, 8080, \"Server port.\");\n"
-        "DEFINE_string(server_host, \"localhost\", "
-            "\"Server host to connect to\");\n"
-        "DEFINE_string(server_host_override, \"foo.test.google.fr\",\n"
-        "\t\t\"The server name use to verify the hostname returned by TLS handshake\");\n\n");
+    // TODO
   }
 
   void DoCreateChannel(Printer &printer) const
   {
     printer.Print(
-      "std::shared_ptr<grpc::Channel> channel = grpc::CreateProberChannel(\n"
-      "\t\tFLAGS_server_host, FLAGS_server_port, FLAGS_server_host_override,\n"
-      "\t\tFLAGS_use_tls, FLAGS_use_test_ca);\n\n");
+      "channel = grpc.insecure_channel('localhost:50051')\n");
   }
 
   void DoParseFlags(Printer &printer) const
   {
-    printer.Print("ParseCommandLineFlags(&argc, &argv, true);\n");
+    // printer.Print("ParseCommandLineFlags(&argc, &argv, true);\n");
   }
 
   void DoStartPrint(Printer &printer) const
   {
-    printer.Print("std::cout << \"");
+    printer.Print("print(\"");
   }
 
   void DoEndPrint(Printer &printer) const
   {
-    printer.Print("\" << std::endl;\n");
-  }
-
-  void DoPrintMessagePopulatingFunctionDecl(
-      Printer &printer, vars_t &vars) const
-  {
-    // printer.Print(
-    //     vars, "void Populate$message_name$($message_type$ *message);\n");
+    printer.Print("\")\n");
   }
 
   void DoPrintMessagePopulatingFunctionStart(
       Printer &printer, vars_t &vars) const
   {
     printer.Print(
-        vars, "void Populate$message_name$($message_type$ *message) {\n");
+        vars, "def Populate$message_name$(message):\n");
     printer.Indent();
   }
 
@@ -165,22 +125,19 @@ class CppGrpcClientGenerator : public AbstractGenerator {
 
   void DoPrintMethodProbeStart(Printer &printer, vars_t &vars) const
   {
-    printer.Print(vars, "void Probe$service_name$$method_name$("
-                        "std::shared_ptr<$full_service_name$::Stub> stub) {\n");
+    printer.Print(vars, "def Probe$service_name$$method_name$(stub):\n");
     printer.Indent();
   }
 
   void DoPrintServiceProbeStart(Printer &printer, vars_t &vars) const
   {
-    printer.Print(
-        vars, "void Probe$service_name$(std::shared_ptr<grpc::Channel> channel) {\n");
+    printer.Print(vars, "def Probe$service_name$(channel):\n");
     printer.Indent();
   }
 
   void DoCreateStub(Printer &printer, vars_t &vars) const
   {
-    printer.Print(vars, "std::shared_ptr<$full_service_name$::Stub> stub =\n"
-                        "\t\t$full_service_name$::NewStub(channel);\n");
+    printer.Print(vars, "stub = $proto_filename_without_ext$_pb2_grpc.$service_name$Stub(channel)\n");
   }
 
   void DoPopulateField(Printer &printer, vars_t &vars, 
@@ -188,65 +145,65 @@ class CppGrpcClientGenerator : public AbstractGenerator {
   {
     vars["data"] = sentinel_data[type];
     if (repeated) {
-      printer.Print(vars, "message->add_$field_name$($data$);\n");
-      printer.Print(vars, "message->add_$field_name$($data$);\n");
+      printer.Print(vars, "message.$field_name$ = $data$ + message.$field_name$\n");
+      printer.Print(vars, "message.$field_name$ = $data$ + message.$field_name$\n");
     } else {
-      printer.Print(vars, "message->set_$field_name$($data$);\n");
+      printer.Print(vars, "message.$field_name$ = $data$\n");
     }
   }
 
   void DoPopulateEnum(Printer &printer, vars_t &vars, bool repeated) const
   {
-    if (repeated) {
-      printer.Print(vars, "message->add_$field_name$($enum_type$);\n");
-      printer.Print(vars, "message->add_$field_name$($enum_type$);\n");
-    } else {
-      printer.Print(vars, "message->set_$field_name$($enum_type$);\n");
-    }
+    // if (repeated) {
+    //   printer.Print(vars, "message->add_$field_name$($enum_type$);\n");
+    //   printer.Print(vars, "message->add_$field_name$($enum_type$);\n");
+    // } else {
+    //   printer.Print(vars, "message->set_$field_name$($enum_type$);\n");
+    // }
   }
 
   void DoPopulateMessage(Printer &printer, vars_t &vars, bool repeated) const
   {
-    vars["mutable_or_add"] = repeated ? "add" : "mutable";
-    if (repeated) {
-      printer.Print(vars, "Populate$message_name$(message->add_$field_name$());\n");
-      printer.Print(vars, "Populate$message_name$(message->add_$field_name$());\n");
-    } else {
-      printer.Print(vars, "Populate$message_name$(message->mutable_$field_name$());\n");
-    }
+    // vars["mutable_or_add"] = repeated ? "add" : "mutable";
+    // if (repeated) {
+    //   printer.Print(vars, "Populate$message_name$(message->add_$field_name$());\n");
+    //   printer.Print(vars, "Populate$message_name$(message->add_$field_name$());\n");
+    // } else {
+    //   printer.Print(vars, "Populate$message_name$(message->mutable_$field_name$());\n");
+    // }
   }
 
   void DoUnaryUnary(Printer &printer, vars_t &vars) const
   {
-    printer.Print(vars, "$request_type$ request;\n");
-    printer.Print(vars, "$response_type$ response;\n");
-    printer.Print("grpc::ClientContext context;\n\n");
-    printer.Print(vars, "Populate$request_name$(&request);\n\n");
-    printer.Print(vars, "grpc::Status status = stub->$method_name$(&context, request, &response);\n\n");
-    printer.Print("GPR_ASSERT(status.ok());\n");
+    printer.Print(vars, "request = $proto_filename_without_ext$_pb2.$request_name$()\n");
+    printer.Print(vars, "Populate$request_name$(request)\n\n");
+    printer.Print(vars, "response = stub.$method_name$(request);\n\n");
   }
 
   void DoStartMain(Printer &printer) const
   {
-    printer.Print("int main(int argc, char** argv) {\n");
+    printer.Print("def main():\n");
     printer.Indent();
   }
 
   void DoEndFunction(Printer &printer) const
   {
     printer.Outdent();
-    printer.Print("}\n");
+    printer.NewLine();
   }
 
   void DoTrailer(Printer &printer) const
   {
-    // nothing for c++
+    printer.Print("if __name__ == '__main__':\n");
+    printer.Indent();
+    printer.Print("main()\n");
+    printer.Outdent();
   }
 };
 
 
 int main(int argc, char *argv[]) {
   srand(time(NULL));
-  CppGrpcClientGenerator generator;
+  PythonGrpcClientGenerator generator;
   return grpc::protobuf::compiler::PluginMain(argc, argv, &generator);
 }

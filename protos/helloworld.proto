@@ -48,7 +48,7 @@ message Bar {
 
 // The request message containing the user's name.
 message HelloRequest {
-  repeated Bar name = 1;
+  string name = 1;
 }
 
 // The response message containing the greetings

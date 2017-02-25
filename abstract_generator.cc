@@ -194,6 +194,7 @@ void AbstractGenerator::PrintMessagePopulatingFunction(
   vars_t vars;
   vars["message_type"] = ClassName(message);
   vars["message_name"] = message->name();
+  vars["proto_filename_without_ext"] = StripProto(file->name());
   DoPrintMessagePopulatingFunctionStart(printer, vars);
 
   for (int i = 0; i < message->field_count(); ++i) {
@@ -274,6 +275,7 @@ void AbstractGenerator::PrintServiceProbe(
   vars_t vars;
   vars["service_name"] = service->name();
   vars["full_service_name"] = DotsToColons(service->full_name());
+  vars["proto_filename_without_ext"] = StripProto(file->name());
 
   // generate the method probing functions
   for (int i = 0; i < service->method_count(); ++i) {
@@ -346,12 +348,23 @@ grpc::string AbstractGenerator::GenerateMain() const
   return output;
 }
 
+grpc::string AbstractGenerator::GenerateTrailer() const
+{
+  grpc::string output;
+  {
+    Printer printer(&output);
+    DoTrailer(printer);
+  }
+  return output;
+}
+
 grpc::string AbstractGenerator::GenerateProberClient() const
 {
   return GenerateHeaders()                    +
          GenerateMessagePopulationFunctions() +
          GenerateServiceProbeFunctions()      +
-         GenerateMain();
+         GenerateMain()                       +
+         GenerateTrailer();
 }
 
 grpc::string AbstractGenerator::GetProtoName() const

@@ -226,6 +226,11 @@ class GoGrpcClientGenerator : public AbstractGenerator {
     printer.Outdent();
     printer.Print("}\n");
   }
+
+  void DoTrailer(Printer &printer) const
+  {
+    // nothing for go
+  }
 };
 
 

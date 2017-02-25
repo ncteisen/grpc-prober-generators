@@ -25,3 +25,10 @@ cc_binary(
     srcs = ["go_generator_plugin.cc"],
     deps = [":abstract_generator"],
 )
+
+
+cc_binary(
+    name = "python_generator",
+    srcs = ["python_generator_plugin.cc"],
+    deps = [":abstract_generator"],
+)

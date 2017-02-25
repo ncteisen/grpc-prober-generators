@@ -51,7 +51,7 @@ def check_path(binary):
     proc = subprocess.Popen(args=["which", binary], stdout=devnull)
     ret = proc.wait()
     if ret:
-      print("ensure that " + binary + " is in your $PATH")
+      print("ERROR: ensure that " + binary + " is in your $PATH")
       raise SystemExit(1)
 
 class CXXLanguage:
@@ -110,9 +110,27 @@ class GoLanguage:
         "--plugin=protoc-gen-grpc=../../bazel-bin/go_generator", 
         uniquename + ".proto"])
 
+class PythonLanguage:
+  def name(self):
+    return "python"
+  def do_prework(self, uniquename):
+    print("python pre work")
+    run_and_wait(["protoc", "-I", ".", "--python_out=.", uniquename + ".proto"])
+    run_and_wait(["protoc", "-I", ".", "--python_out=.", "--grpc_out=.", 
+        "--plugin=protoc-gen-grpc=/usr/local/bin/grpc_python_plugin", 
+        uniquename + ".proto"])
+    pass
+  def generate_client(self, uniquename):
+    print("python main work")
+    run_and_wait(["protoc", "-I", ".", "--python_out=.", "--grpc_out=.", 
+        "--plugin=protoc-gen-grpc=../../bazel-bin/python_generator", 
+        uniquename + ".proto"])
+    pass
+
 _LANGUAGES = {
     'c++' : CXXLanguage(),
     'go' : GoLanguage(),
+    'python' : PythonLanguage(),
 }
 
 argp = argparse.ArgumentParser(description='Generate a probing client')
