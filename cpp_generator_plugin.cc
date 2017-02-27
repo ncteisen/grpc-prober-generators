@@ -142,13 +142,6 @@ class CppGrpcClientGenerator : public AbstractGenerator {
     printer.Print("\" << std::endl;\n");
   }
 
-  void DoPrintMessagePopulatingFunctionDecl(
-      Printer &printer, vars_t &vars) const
-  {
-    // printer.Print(
-    //     vars, "void Populate$message_name$($message_type$ *message);\n");
-  }
-
   void DoPrintMessagePopulatingFunctionStart(
       Printer &printer, vars_t &vars) const
   {
@@ -236,11 +229,6 @@ class CppGrpcClientGenerator : public AbstractGenerator {
   {
     printer.Outdent();
     printer.Print("}\n");
-  }
-
-  void DoTrailer(Printer &printer) const
-  {
-    // nothing for c++
   }
 };
 

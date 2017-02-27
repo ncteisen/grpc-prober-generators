@@ -68,11 +68,6 @@ class PythonGrpcClientGenerator : public AbstractGenerator {
     return "# "; 
   }
 
-  void DoPrintPackage(Printer &printer, vars_t &vars) const
-  {
-    // nothing to do for Python
-  }
-
   void DoPrintIncludes(Printer &printer, vars_t &vars) const
   {
     printer.Print("from __future__ import print_function\n\n");
@@ -145,32 +140,36 @@ class PythonGrpcClientGenerator : public AbstractGenerator {
   {
     vars["data"] = sentinel_data[type];
     if (repeated) {
-      printer.Print(vars, "message.$field_name$ = $data$ + message.$field_name$\n");
-      printer.Print(vars, "message.$field_name$ = $data$ + message.$field_name$\n");
+      printer.Print(vars, "message.$field_name$.append($data$)\n");
+      printer.Print(vars, "message.$field_name$.append($data$)\n");
     } else {
       printer.Print(vars, "message.$field_name$ = $data$\n");
     }
   }
 
+  void DoEmptyMessage(Printer &printer, vars_t &vars) const 
+  {
+    printer.Print("pass\n");
+  }
+
   void DoPopulateEnum(Printer &printer, vars_t &vars, bool repeated) const
   {
-    // if (repeated) {
-    //   printer.Print(vars, "message->add_$field_name$($enum_type$);\n");
-    //   printer.Print(vars, "message->add_$field_name$($enum_type$);\n");
-    // } else {
-    //   printer.Print(vars, "message->set_$field_name$($enum_type$);\n");
-    // }
+    if (repeated) {
+      printer.Print(vars, "message.$field_name$.append($proto_filename_without_ext$_pb2.$enum_short_name$);\n");
+      printer.Print(vars, "message.$field_name$.append($proto_filename_without_ext$_pb2.$enum_short_name$);\n");
+    } else {
+      printer.Print(vars, "message.$field_name$ = $proto_filename_without_ext$_pb2.$enum_short_name$;\n");
+    }
   }
 
   void DoPopulateMessage(Printer &printer, vars_t &vars, bool repeated) const
   {
-    // vars["mutable_or_add"] = repeated ? "add" : "mutable";
-    // if (repeated) {
-    //   printer.Print(vars, "Populate$message_name$(message->add_$field_name$());\n");
-    //   printer.Print(vars, "Populate$message_name$(message->add_$field_name$());\n");
-    // } else {
-    //   printer.Print(vars, "Populate$message_name$(message->mutable_$field_name$());\n");
-    // }
+    if (repeated) {
+      printer.Print(vars, "Populate$message_name$(message.$field_name$.add());\n");
+      printer.Print(vars, "Populate$message_name$(message.$field_name$.add());\n");
+    } else {
+      printer.Print(vars, "Populate$message_name$(message.$field_name$);\n");
+    }
   }
 
   void DoUnaryUnary(Printer &printer, vars_t &vars) const

@@ -159,13 +159,15 @@ class AbstractGenerator : public grpc::protobuf::compiler::CodeGenerator {
   // return language specific comment prefix string
   virtual grpc::string GetCommentPrefix() const = 0;
 
+  // only used for Python, not pure virtual
+  virtual void DoTrailer(Printer &printer) const {};
+
   // creates the channel
   virtual void DoCreateChannel(Printer &printer) const = 0;
   // language specific gflags parsing line
   virtual void DoParseFlags(Printer &printer) const = 0;
   // start the main function
   virtual void DoStartMain(Printer &printer) const = 0;
-  virtual void DoTrailer(Printer &printer) const = 0;
   // end any functions
   virtual void DoEndFunction(Printer &printer) const = 0;
   virtual void DoStartPrint(Printer &printer) const = 0;
@@ -173,7 +175,12 @@ class AbstractGenerator : public grpc::protobuf::compiler::CodeGenerator {
 
   virtual void DoPrintMessagePopulatingFunctionEnd(Printer &printer) const = 0;
 
-  virtual void DoPrintPackage(Printer &printer, vars_t &vars) const = 0;
+  // only used for python, not pure virtual
+  virtual void DoEmptyMessage(Printer &printer, vars_t &vars) const {}
+
+  // only used for Go, not pure virtual
+  virtual void DoPrintPackage(Printer &printer, vars_t &vars) const {}
+
   virtual void DoPrintIncludes(Printer &printer, vars_t &vars) const = 0;
   virtual void DoPrintFlags(Printer &printer, vars_t &vars) const = 0;
 

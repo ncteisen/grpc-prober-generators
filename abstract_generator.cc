@@ -141,6 +141,7 @@ void AbstractGenerator::PopulateEnum(
   const google::protobuf::EnumValueDescriptor* val = 
       enum_->FindValueByNumber(0); // grabs first val of enum
   vars["enum_type"] = DotsToColons(val->full_name());
+  vars["enum_short_name"] = val->name();
   grpc::string enum_type_upper = val->name();
   std::transform(
       enum_type_upper.begin(), enum_type_upper.end(), enum_type_upper.begin(), toupper);
@@ -196,6 +197,9 @@ void AbstractGenerator::PrintMessagePopulatingFunction(
   vars["message_name"] = message->name();
   vars["proto_filename_without_ext"] = StripProto(file->name());
   DoPrintMessagePopulatingFunctionStart(printer, vars);
+
+  // some languages can't have empty function bodies. *cough cough* python.
+  if (!message->field_count()) DoEmptyMessage(printer, vars);
 
   for (int i = 0; i < message->field_count(); ++i) {
     PrintPopulateField(message->field(i), printer, vars);
