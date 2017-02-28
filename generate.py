@@ -113,12 +113,18 @@ class GoLanguage:
 class PythonLanguage:
   def name(self):
     return "python"
+  def copy_helpers(self, uniquename):
+    shutil.copy(ROOT + "/util/python/create_prober_channel.py", 
+        ROOT + "/generated_probers/" + uniquename + "_" + self.name() + "/")
+    shutil.copytree(ROOT + "/util/python/credential", 
+        ROOT + "/generated_probers/" + uniquename + "_" + self.name() + "/credential")
   def do_prework(self, uniquename):
     print("python pre work")
     run_and_wait(["protoc", "-I", ".", "--python_out=.", uniquename + ".proto"])
     run_and_wait(["protoc", "-I", ".", "--python_out=.", "--grpc_out=.", 
         "--plugin=protoc-gen-grpc=/usr/local/bin/grpc_python_plugin", 
         uniquename + ".proto"])
+    self.copy_helpers(uniquename)
     pass
   def generate_client(self, uniquename):
     print("python main work")

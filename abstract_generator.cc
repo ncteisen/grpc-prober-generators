@@ -354,7 +354,7 @@ grpc::string AbstractGenerator::GenerateMain() const
     DoParseFlags(printer);
     printer.NewLine();
 
-    PrintComment(printer, "The channel creating code is stored in the util directory");
+    PrintComment(printer, "The channel creating code is stored in the util directory.");
     DoCreateChannel(printer);
 
     for (int i = 0; i < file->service_count(); ++i) {

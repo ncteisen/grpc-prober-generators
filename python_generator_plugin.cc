@@ -76,6 +76,8 @@ class PythonGrpcClientGenerator : public AbstractGenerator {
 
     printer.Print(vars,"import $proto_filename_without_ext$_pb2\n"
                        "import $proto_filename_without_ext$_pb2_grpc\n\n");
+
+    printer.Print("from create_prober_channel import create_prober_channel\n\n");
   }
 
   void DoPrintFlags(Printer &printer, vars_t &vars) const
@@ -85,8 +87,8 @@ class PythonGrpcClientGenerator : public AbstractGenerator {
 
   void DoCreateChannel(Printer &printer) const
   {
-    printer.Print(
-      "channel = grpc.insecure_channel('localhost:50051')\n");
+    printer.Print("# argument parsing is handled in the util file too.\n");
+    printer.Print("channel = create_prober_channel()\n");
   }
 
   void DoParseFlags(Printer &printer) const
