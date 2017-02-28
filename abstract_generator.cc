@@ -196,6 +196,9 @@ void AbstractGenerator::PrintMessagePopulatingFunction(
   vars["message_type"] = ClassName(message);
   vars["message_name"] = message->name();
   vars["proto_filename_without_ext"] = StripProto(file->name());
+
+  PrintComment(printer, vars, "Helper function for populating $message_name$ message types.");
+
   DoPrintMessagePopulatingFunctionStart(printer, vars);
 
   // some languages can't have empty function bodies. *cough cough* python.
@@ -226,6 +229,12 @@ grpc::string AbstractGenerator::GenerateMessagePopulationFunctions() const
   grpc::string output;
   {
     Printer printer(&output);
+
+    PrintComment(printer, "The following functions are utility functions for populating the various message types");
+    PrintComment(printer, "that are used by your service. They are to be used as examples, and then extended to");
+    PrintComment(printer, "implement your API specific prober logic");
+    printer.NewLine();
+
     for (auto it = input_messages.begin(); 
         it != input_messages.end(); ++it) {
       PrintMessagePopulatingFunction(*it, printer);
@@ -312,6 +321,11 @@ grpc::string AbstractGenerator::GenerateServiceProbeFunctions() const
   grpc::string output;
   {
     Printer printer(&output);
+
+    PrintComment(printer, "The following functions are responsible for probing the unary unary methods API.");
+    PrintComment(printer, "Hopefully it is easy to modify these functions to test you API specific logic.");
+    printer.NewLine();
+
     for (int i = 0; i < file->service_count(); ++i) {
       PrintServiceProbe(file->service(i), printer);
     }
@@ -340,6 +354,7 @@ grpc::string AbstractGenerator::GenerateMain() const
     DoParseFlags(printer);
     printer.NewLine();
 
+    PrintComment(printer, "The channel creating code is stored in the util directory");
     DoCreateChannel(printer);
 
     for (int i = 0; i < file->service_count(); ++i) {
